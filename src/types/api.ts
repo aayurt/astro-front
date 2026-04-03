@@ -119,31 +119,3 @@ export interface PlanetDetail {
   details: any; // This can be more specific if needed
   houses?: string;
 }
-
-export interface SummaryResponse {
-  userId: string;
-  birthDetails: {
-    date?: string;
-    time?: string;
-    location?: string;
-    latitude?: number;
-    longitude?: number;
-    timezone?: string;
-  };
-  natal: ChartData;
-  navamsa: ChartData;
-  vimsottari: {
-    activeMahaDasha: MahaDasha | null;
-    activeAntarDasha: AntarDasha | null;
-  };
-  yogini: {
-    activeYogini: YoginiDasha | null;
-    activeYoginiAntar: YoginiAntardasha | null;
-  };
-  transit: ChartData;
-  specialPlanets: {
-    atmakaraka: PlanetDetail;
-    darakaraka: PlanetDetail;
-    yogakaraka: PlanetDetail | null;
-  };
-}

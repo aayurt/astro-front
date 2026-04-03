@@ -15,6 +15,7 @@ import { authClient } from '../lib/auth-client';
 
 import { ChartData, PanchangData, User } from '../types/api';
 import { ZODIAC_SIGNS } from '../types/constants';
+import { LoadingPlanet } from '../components/LoadingPlanet';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -22,7 +23,6 @@ export default function BirthChartPage() {
   const [user, setUser] = React.useState<User | null>(null);
   const [natalChart, setNatalChart] = React.useState<ChartData | null>(null);
   const [d9Chart, setD9Chart] = React.useState<ChartData | null>(null);
-  const [panchang, setPanchang] = React.useState<PanchangData | null>(null);
   const [planets, setPlanets] = React.useState<ChartData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
@@ -83,10 +83,8 @@ export default function BirthChartPage() {
   if (loading)
     return (
       <Page>
-        <Navbar title='Dashboard' />
-        <Block className='flex justify-center items-center h-full'>
-          <Preloader />
-        </Block>
+        <Navbar title='Natal Chart' />
+        <LoadingPlanet />
       </Page>
     );
   return (

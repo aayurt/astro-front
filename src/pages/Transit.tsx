@@ -1,11 +1,14 @@
+import axios from 'axios';
 import { Block, BlockTitle, Card, Navbar, Page, Preloader } from 'konsta/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import VedicChart from '../components/VedicChart';
 import { authClient } from '../lib/auth-client';
+import { ChartData } from '../types/api';
 import { ZODIAC_SIGNS } from '../types/constants';
-import { useAstroStore } from '../store/astroStore';
+import { LoadingPlanet } from '../components/LoadingPlanet';
 
-export const mapChartData = (data: any): any => {
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+export const mapChartData = (data: any): ChartData => {
   return Object.entries(data).reduce((acc, [key, planet]: [string, any]) => {
     acc[key] = {
       name: planet.name,
@@ -15,45 +18,84 @@ export const mapChartData = (data: any): any => {
       current_sign: planet.sign_number,
       degrees: Number(parseFloat(planet.degree_in_sign).toFixed(2)),
       zodiac_sign_name: planet.zodiac_sign_name,
-      house_number: planet.house_number, // Use house_number from backend
+      house_number: planet.sign_number,
     };
 
     return acc;
-  }, {} as any);
+  }, {} as ChartData);
 };
 export default function TransitPage() {
-  const {
-    transitData,
-    myTransitData,
-    loading,
-    error,
-    fetchTransitData,
-    fetchMyTransitData,
-  } = useAstroStore();
+  const [transitData, setTransitData] = useState<ChartData | null>(null);
+  const [myTransitData, setMyTransitData] = useState<ChartData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const initializeData = async () => {
-      const session = await authClient.getSession();
-      if (!session?.data?.session?.token) {
-        // Handle unauthenticated state, maybe redirect to login
-        return;
-      }
-      await fetchTransitData();
-      await fetchMyTransitData();
-    };
-    initializeData();
-  }, [fetchTransitData, fetchMyTransitData]);
+    const fetchData = async () => {
+      try {
+        const session = await authClient.getSession();
+        if (!session?.data?.session?.token) {
+          setError('Not authenticated');
+          setLoading(false);
+          return;
+        }
 
-  const planets = transitData;
-  const myTransitPlanets = myTransitData;
+        const headers = { Authorization: `Bearer ${session.data.session.token}` };
+
+        const [transitRes, natalChart] = await Promise.all([
+          axios.get(`${BACKEND_URL}/api/astrology/transit`, { headers, withCredentials: true }),
+          axios.get(`${BACKEND_URL}/api/astrology/planets-extended`, {
+            headers,
+            withCredentials: true,
+          }),
+        ]);
+        setTransitData(transitRes.data);
+        const transitData = transitRes.data;
+        const result: Record<string, any> = {};
+        const targetAscHouseNumber = natalChart.data.Ascendant.current_sign;
+        const targetAscZodiac = natalChart.data.Ascendant.zodiac_sign_lord;
+        const currentTransitAscHouseNumber = (Object.entries(transitData).find(([key]) => key === targetAscZodiac)?.[1] as any)?.house_number || 1;
+        const shift = 12 - currentTransitAscHouseNumber;
+        // 3
+        // 2(which house currently)
+
+        for (const [planet, info] of Object.entries(transitData) as [string, any][]) {
+          const houseNumber = info.house_number
+          const newHouseNumber = ((houseNumber + shift) % 12) || 12;
+
+          result[planet] = {
+            ...info,
+            original_house_number: houseNumber,
+            house_number: newHouseNumber,
+          };
+        }
+        result.Ascendant = {
+          ...result.Ascendant,
+          current_sign: targetAscHouseNumber,
+        };
+
+        setMyTransitData(result);
+      } catch (err: any) {
+        console.error('Error fetching transit data:', err);
+        setError(err.message || 'Failed to fetch transit data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const planets = transitData
+  const myTransitPlanets = myTransitData
+
+
   return (
     <Page>
       <Navbar title="Planet Transits" />
 
       {loading ? (
-        <Block className="flex justify-center items-center h-full">
-          <Preloader />
-        </Block>
+        <LoadingPlanet />
       ) : error ? (
         <Block strong className="text-center text-red-500">
           <p>{error}</p>

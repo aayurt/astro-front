@@ -119,7 +119,7 @@ export const PlanetaryHighlights = () => {
             }
 
             // 5. Yogakaraka
-            const ascSign = planets?.Ascendant?.sign_number;
+            const ascSign = planets?.Ascendant?.current_sign;
             const yogakarakaMap: Record<number, { name: string; houses: string }> = {
                 2: { name: 'Saturn', houses: '9th & 10th' }, // Taurus: 9 & 10
                 4: { name: 'Mars', houses: '5th & 10th' }, // Cancer: 5 & 10

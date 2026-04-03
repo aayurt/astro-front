@@ -13,15 +13,15 @@ import { authClient } from '../lib/auth-client';
 import { PlanetsBirthChartSummary } from '../components/PlanetsBirthChartSummary';
 import { VimsottariDasha } from '../components/VimsottariDasha';
 import { YoginiDasha } from '../components/YoginiDasha';
-import { SpecialPlanets } from '../components/SpecialPlanets';
 import { useAstroStore } from '../store/astroStore';
+import { PlanetModel } from '../components/PlanetModel';
+import { LoadingPlanet } from '../components/LoadingPlanet';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const {
     user,
     planets,
-    specialPlanets,
     coins,
     canClaim,
     loading,
@@ -47,11 +47,11 @@ export default function DashboardPage() {
     await claimDailyCoins();
   };
 
-  if (loading && !planets) {
+  if (loading) {
     return (
       <Page>
         <Navbar title='Dashboard' />
-        <BlockTitle className="text-center mt-8">Loading your astrological data...</BlockTitle>
+        <LoadingPlanet />
       </Page>
     );
   }

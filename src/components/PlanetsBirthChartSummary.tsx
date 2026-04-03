@@ -5,10 +5,11 @@ import {
     Card,
 } from 'konsta/react';
 import { PlanetModel } from './PlanetModel';
+import { VALID_PLANETS } from '../types/constants';
 
 export const PlanetsBirthChartSummary = ({ planets }: { planets: ChartData }) => {
     // List of planets that have 3D models available
-    const MODEL_PLANETS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Uranus', 'Neptune'];
+    const MODEL_PLANETS = VALID_PLANETS;
 
     return (
         <div className="px-4 py-2 pb-10">

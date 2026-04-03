@@ -8,7 +8,7 @@ const MainLayout = () => {
       <div className="flex-1 overflow-auto relative">
         <Outlet />
       </div>
-      <div>
+      <div className='h-20'>
         <BottomNav />
       </div>
     </div>

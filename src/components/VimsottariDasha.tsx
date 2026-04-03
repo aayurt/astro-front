@@ -9,7 +9,6 @@ export const VimsottariDasha = () => {
     const [expandedIndex, setExpandedIndex] = React.useState<number | null>(null);
 
     const now = new Date();
-
     React.useEffect(() => {
         if (mahaDashas.length === 0) {
             fetchVimsottariDashas();
