@@ -4,6 +4,7 @@ import axios from 'axios';
 import { authClient } from '../lib/auth-client';
 import { MessageSquare, Plus, History, Bot, Send, MenuIcon } from 'lucide-react';
 import { LoadingPlanet } from '../components/LoadingPlanet';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -11,6 +12,7 @@ interface ChatMessage {
   text: string;
   type: 'sent' | 'received';
   name: string;
+  time?: string;
 }
 
 interface Conversation {
@@ -20,6 +22,8 @@ interface Conversation {
 }
 
 export default function AIPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [messageText, setMessageText] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -35,6 +39,15 @@ export default function AIPage() {
       setSidebarOpen(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (id) {
+      fetchMessages(id);
+    } else {
+      setActiveConversationId(null);
+      setMessages([]);
+    }
+  }, [id]);
 
   const fetchCoins = async () => {
     const session = await authClient.getSession();
@@ -80,6 +93,7 @@ export default function AIPage() {
         text: m.content,
         type: m.role === 'user' ? 'sent' : 'received',
         name: m.role === 'user' ? 'Me' : 'Astro AI',
+        time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       }));
       setMessages(chatMessages);
       setActiveConversationId(id);
@@ -100,8 +114,7 @@ export default function AIPage() {
   }, [messages]);
 
   const startNewChat = () => {
-    setActiveConversationId(null);
-    setMessages([]);
+    navigate('/ai');
     setMessageText('');
   };
 
@@ -113,11 +126,19 @@ export default function AIPage() {
       text,
       type: 'sent',
       name: 'Me',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     const updatedMessages = [...messages, newMessage];
     setMessages(updatedMessages);
     setMessageText('');
+
+    // Reset textarea height
+    const textarea = document.querySelector('textarea');
+    if (textarea) {
+      textarea.style.height = 'auto';
+    }
+
     setLoading(true);
 
     const session = await authClient.getSession();
@@ -134,18 +155,24 @@ export default function AIPage() {
         text: res.data.response,
         type: 'received',
         name: 'Astro AI',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages([...updatedMessages, aiMessage]);
       setCoins(res.data.coinsLeft);
 
       if (!activeConversationId) {
-        setActiveConversationId(res.data.conversationId);
+        navigate(`/ai/${res.data.conversationId}`, { replace: true });
         fetchConversations();
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Failed to get response';
-      setMessages([...updatedMessages, { text: errorMessage, type: 'received', name: 'System' }]);
+      setMessages([...updatedMessages, {
+        text: errorMessage,
+        type: 'received',
+        name: 'System',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
     } finally {
       setLoading(false);
     }
@@ -201,7 +228,7 @@ export default function AIPage() {
             </Button>
           </div>
 
-          <div className="flex-1 ">
+          <div className="flex-1 min-w-0">
             <BlockTitle className="m-0! px-4 py-2 uppercase text-[10px] font-bold tracking-wider text-gray-400">Recent Chats</BlockTitle>
             {loadingHistory ? (
               <div className="flex justify-center py-4"><Preloader className="w-5 h-5" /></div>
@@ -211,13 +238,13 @@ export default function AIPage() {
                   <ListItem
                     key={conv.id}
                     link
-                    title={<span className="text-xs truncate block">{conv.title}</span>}
+                    title={<div className="text-xs truncate w-full block">{conv.title}</div>}
                     onClick={() => {
-                      fetchMessages(conv.id);
+                      navigate(`/ai/${conv.id}`);
                       if (window.innerWidth < 768) setSidebarOpen(false);
                     }}
-                    className={`${activeConversationId === conv.id ? 'bg-indigo-50' : ''}`}
-                    media={<MessageSquare size={14} className={activeConversationId === conv.id ? 'text-indigo-600' : 'text-gray-400'} />}
+                    className={`${activeConversationId === conv.id ? 'bg-indigo-50' : ''} overflow-hidden`}
+                    media={<div className="shrink-0"><MessageSquare size={14} className={activeConversationId === conv.id ? 'text-indigo-600' : 'text-gray-400'} /></div>}
                   />
                 ))}
                 {conversations.length === 0 && (
@@ -242,28 +269,42 @@ export default function AIPage() {
                   <p className="text-[10px] mt-4 italic font-medium">(Each question uses 1 coin)</p>
                 </div>
               )}
-              {messages.map((msg, index) => (
+              {messages.map((msg, index) => {
+                return (<>
+                  <Message
+                    key={index}
+                    type={msg.type}
+                    name={msg.name}
+                    text={msg.text}
+                    footer={<div className={`text-xs text-gray-400 flex ${msg.type !== 'received' ? 'justify-end' : 'justify-start'} mt-1`}>{msg.time}</div>}
+                    className="mb-4 text-sm py-2 whitespace-pre-wrap"
+                  />
+                </>
+                )
+              })}
+              {loading && activeConversationId && (
                 <Message
-                  key={index}
-                  type={msg.type}
-                  name={msg.name}
-                  text={msg.text}
-                  className="mb-4 text-sm py-2"
+                  type="received"
+                  name="Astro AI"
+                  text="Thinking..."
+                  footer={new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 />
-              ))}
-              {loading && activeConversationId && <Message type="received" name="Astro AI" text="Thinking..." />}
+              )}
               {loading && <LoadingPlanet />}
 
               <div ref={messagesEndRef} />
             </Messages>
           </div>
-          <div className='border-t border-gray-500'></div>
           <Messagebar
             placeholder={coins > 0 ? "Ask a question..." : "Insufficient coins"}
             value={messageText}
-            onInput={(e) => setMessageText(e.target.value)}
+            onInput={(e: any) => {
+              setMessageText(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
             disabled={coins <= 0}
-            className="border-t border-gray-100 relative rounded-md shadow-md md:shadow-lg"
+            className="border-t border-gray-100 relative rounded-md shadow-md md:shadow-lg [&_textarea]:resize-none [&_textarea]:max-h-48"
             right={
               <Button
                 clear

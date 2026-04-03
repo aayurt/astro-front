@@ -48,6 +48,7 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path='/dashboard' element={<DashboardPage />} />
           <Route path='/ai' element={<AIPage />} />
+          <Route path='/ai/:id' element={<AIPage />} />
           <Route path='/birth-chart' element={<BirthChartPage />} />
           <Route path='/transit' element={<TransitPage />} />
           <Route path='/profile' element={<ProfilePage />} />
