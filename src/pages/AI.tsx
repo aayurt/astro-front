@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Page, Navbar, Block, BlockTitle, List, ListItem, Button, Message, Messagebar, Messages, MessagesTitle, Preloader, Icon } from 'konsta/react';
+import { useState, useEffect, useRef } from 'react';
+import { Page, Navbar, BlockTitle, List, ListItem, Button, Message, Messagebar, Messages, Preloader, Icon } from 'konsta/react';
 import axios from 'axios';
 import { authClient } from '../lib/auth-client';
-import { MessageSquare, Plus, History, ChevronLeft, ChevronRight, Bot, Send } from 'lucide-react';
+import { MessageSquare, Plus, History, Bot, Send, MenuIcon } from 'lucide-react';
+import { LoadingPlanet } from '../components/LoadingPlanet';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -26,8 +27,14 @@ export default function AIPage() {
   const [coins, setCoins] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (window.innerWidth >= 768) {
+      setSidebarOpen(true);
+    }
+  }, []);
 
   const fetchCoins = async () => {
     const session = await authClient.getSession();
@@ -149,6 +156,15 @@ export default function AIPage() {
       <Navbar
         title='AI Guru'
         className=''
+        left={
+          <Button
+            clear
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2!"
+          >
+            <MenuIcon size={20} className={sidebarOpen ? 'text-indigo-600' : 'text-gray-400'} />
+          </Button>
+        }
         right={
           <>
           </>
@@ -157,14 +173,29 @@ export default function AIPage() {
         <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 inset-ring inset-ring-yellow-600/20">🪙 {coins} Coins</span>
       </Navbar>
 
-      <div className="flex h-[calc(100vh-160px)] overflow-hidden">
+      <div className="flex h-[calc(100vh-160px)] overflow-hidden relative">
+        {/* Sidebar Overlay (Mobile only) */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar */}
-        <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 border-r border-gray-100 bg-gray-50/50 flex flex-col overflow-hidden`}>
+        <div className={`
+          fixed md:relative z-50 md:z-auto h-full
+          ${sidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'}
+          transition-all duration-300 border-r border-gray-100 bg-white md:bg-gray-50/50 flex flex-col overflow-hidden
+        `}>
           <div className="p-4">
             <Button
               outline
               className="w-full flex items-center justify-center gap-2"
-              onClick={startNewChat}
+              onClick={() => {
+                startNewChat();
+                if (window.innerWidth < 768) setSidebarOpen(false);
+              }}
             >
               <Plus size={16} /> New Chat
             </Button>
@@ -173,7 +204,7 @@ export default function AIPage() {
           <div className="flex-1 ">
             <BlockTitle className="m-0! px-4 py-2 uppercase text-[10px] font-bold tracking-wider text-gray-400">Recent Chats</BlockTitle>
             {loadingHistory ? (
-              <div className="flex justify-center py-4"><Preloader size="w-5 h-5" /></div>
+              <div className="flex justify-center py-4"><Preloader className="w-5 h-5" /></div>
             ) : (
               <List strongIos insetIos className="m-2! h-full overflow-y-auto">
                 {conversations.map((conv) => (
@@ -181,7 +212,10 @@ export default function AIPage() {
                     key={conv.id}
                     link
                     title={<span className="text-xs truncate block">{conv.title}</span>}
-                    onClick={() => fetchMessages(conv.id)}
+                    onClick={() => {
+                      fetchMessages(conv.id);
+                      if (window.innerWidth < 768) setSidebarOpen(false);
+                    }}
                     className={`${activeConversationId === conv.id ? 'bg-indigo-50' : ''}`}
                     media={<MessageSquare size={14} className={activeConversationId === conv.id ? 'text-indigo-600' : 'text-gray-400'} />}
                   />
@@ -214,10 +248,12 @@ export default function AIPage() {
                   type={msg.type}
                   name={msg.name}
                   text={msg.text}
-                  className="mb-4"
+                  className="mb-4 text-sm py-2"
                 />
               ))}
               {loading && activeConversationId && <Message type="received" name="Astro AI" text="Thinking..." />}
+              {loading && <LoadingPlanet />}
+
               <div ref={messagesEndRef} />
             </Messages>
           </div>
