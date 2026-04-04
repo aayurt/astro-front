@@ -28,6 +28,7 @@ export default function SignupPage() {
   const handleGoogleLogin = async () => {
     await authClient.signIn.social({
       provider: 'google',
+      callbackURL: (import.meta.env.VITE_FRONTEND_URL || window.location.origin) + (import.meta.env.VITE_BASE_PATH || '') + '/onboarding',
     });
   };
 
@@ -63,11 +64,11 @@ export default function SignupPage() {
             {loading ? 'Creating account...' : 'Sign Up'}
           </Button>
         </Block>
-        <Block>
+        {/* <Block>
           <Button large outline onClick={handleGoogleLogin}>
             Sign up with Google
           </Button>
-        </Block>
+        </Block> */}
         <Block className="text-center">
           <Link to="/login">Already have an account? Login</Link>
         </Block>

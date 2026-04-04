@@ -148,6 +148,7 @@ export default function AIPage() {
         {
           headers: { Authorization: `Bearer ${session.data?.session.token}` },
           withCredentials: true,
+          timeout: 100000 // Wait for 100 seconds
         }
       );
 

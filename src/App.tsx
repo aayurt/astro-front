@@ -36,8 +36,9 @@ function LandingPage() {
 }
 
 function App() {
+  const basename = import.meta.env.VITE_BASE_PATH || '/';
   return (
-    <Router>
+    <Router basename={basename}>
       <Routes>
         <Route path='/' element={<LandingPage />} />
         <Route path='/login' element={<LoginPage />} />
