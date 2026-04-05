@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import axios from 'axios';
 import { authClient } from '../lib/auth-client';
 import { ChartData, MahaDasha, YoginiDasha, User } from '../types/api';
@@ -8,6 +9,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 interface AstroState {
   user: User | null;
   planets: ChartData | null;
+  d9Chart: ChartData | null;
   specialPlanets: any | null;
   mahaDashas: MahaDasha[];
   yoginiDashas: YoginiDasha[];
@@ -16,34 +18,26 @@ interface AstroState {
   coins: number;
   canClaim: boolean;
   loading: boolean;
+  hydrated: boolean;
   error: string | null;
-  fetchAstroData: () => Promise<void>;
+  fetchAstroData: (force?: boolean) => Promise<void>;
   fetchCoinStatus: () => Promise<void>;
   claimDailyCoins: () => Promise<void>;
-  fetchTransitData: () => Promise<void>;
-  fetchMyTransitData: () => Promise<void>;
-  fetchVimsottariDashas: () => Promise<void>;
-  fetchYoginiDashas: () => Promise<void>;
+  fetchTransitData: (force?: boolean) => Promise<void>;
+  fetchMyTransitData: (force?: boolean) => Promise<void>;
+  fetchVimsottariDashas: (force?: boolean) => Promise<void>;
+  fetchYoginiDashas: (force?: boolean) => Promise<void>;
   clearAstroData: () => void;
+  setHydrated: (val: boolean) => void;
+  updateUser: (userData: Partial<User>) => void;
 }
 
-export const useAstroStore = create<AstroState>((set, get) => ({
-  user: null,
-  planets: null,
-  specialPlanets: null,
-  mahaDashas: [],
-  yoginiDashas: [],
-  transitData: null,
-  myTransitData: null,
-  coins: 0,
-  canClaim: false,
-  loading: false,
-  error: null,
-
-  clearAstroData: () => {
-    set({
+export const useAstroStore = create<AstroState>()(
+  persist(
+    (set, get) => ({
       user: null,
       planets: null,
+      d9Chart: null,
       specialPlanets: null,
       mahaDashas: [],
       yoginiDashas: [],
@@ -51,234 +45,357 @@ export const useAstroStore = create<AstroState>((set, get) => ({
       myTransitData: null,
       coins: 0,
       canClaim: false,
+      loading: false,
+      hydrated: false,
       error: null,
-    });
-  },
 
-  fetchCoinStatus: async () => {
-    const session = await authClient.getSession();
-    if (!session?.data?.session?.token) {
-      set({ coins: 0, canClaim: false });
-      return;
-    }
+      setHydrated: (val: boolean) => set({ hydrated: val }),
 
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/user/coins`, {
-        headers: { Authorization: `Bearer ${session.data.session.token}` },
-        withCredentials: true,
-      });
-      set({ coins: res.data.coins, canClaim: res.data.canClaim });
-    } catch (err: any) {
-      console.error('Error fetching coins', err);
-      set({ error: err.message || 'Failed to fetch coin status' });
-    }
-  },
+      updateUser: (userData) => {
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, ...userData } });
+        }
+      },
 
-  claimDailyCoins: async () => {
-    if (!get().canClaim) return;
+      clearAstroData: () => {
+        set({
+          user: null,
+          planets: null,
+          d9Chart: null,
+          specialPlanets: null,
+          mahaDashas: [],
+          yoginiDashas: [],
+          transitData: null,
+          myTransitData: null,
+          coins: 0,
+          canClaim: false,
+          error: null,
+        });
+      },
 
-    set({ loading: true });
-    const session = await authClient.getSession();
-    try {
-      const res = await axios.post(
-        `${BACKEND_URL}/api/user/claim-coins`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${session.data?.session.token}` },
-          withCredentials: true,
-        },
-      );
-      set({ coins: res.data.coins, canClaim: false, loading: false });
-    } catch (err: any) {
-      console.error('Error claiming coins', err);
-      set({ error: err.message || 'Failed to claim coins', loading: false });
-    }
-  },
+      fetchCoinStatus: async () => {
+        const session = await authClient.getSession();
+        if (!session?.data?.session?.token) {
+          set({ coins: 0, canClaim: false });
+          return;
+        }
 
-  fetchAstroData: async () => {
-    set({ loading: true, error: null });
-    const session = await authClient.getSession();
-    if (!session?.data?.session?.token) {
-      set({ loading: false, error: 'Not authenticated' });
-      return;
-    }
+        try {
+          const res = await axios.get(`${BACKEND_URL}/api/user/coins`, {
+            headers: { Authorization: `Bearer ${session.data.session.token}` },
+            withCredentials: true,
+          });
+          set({ coins: res.data.coins, canClaim: res.data.canClaim });
+        } catch (err: any) {
+          console.error('Error fetching coins', err);
+          set({ error: err.message || 'Failed to fetch coin status' });
+        }
+      },
 
-    try {
-      const headers = { Authorization: `Bearer ${session.data.session.token}` };
+      claimDailyCoins: async () => {
+        if (!get().canClaim) return;
 
-      const [planetsRes, mahaDashasRes, yoginiDashasRes, transitRes] =
-        await Promise.all([
-          axios.get(`${BACKEND_URL}/api/astrology/planets-extended`, {
+        set({ loading: true });
+        const session = await authClient.getSession();
+        try {
+          const res = await axios.post(
+            `${BACKEND_URL}/api/user/claim-coins`,
+            {},
+            {
+              headers: {
+                Authorization: `Bearer ${session.data?.session.token}`,
+              },
+              withCredentials: true,
+            },
+          );
+          set({ coins: res.data.coins, canClaim: false, loading: false });
+        } catch (err: any) {
+          console.error('Error claiming coins', err);
+          set({
+            error: err.message || 'Failed to claim coins',
+            loading: false,
+          });
+        }
+      },
+
+      fetchAstroData: async (force = false) => {
+        // Prevent concurrent fetches
+        if (get().loading) return;
+
+        // If not hydrated yet, wait for hydration (but only if not forcing)
+        if (!force && !get().hydrated) {
+          console.log('Waiting for hydration...');
+          return;
+        }
+
+        // If not forcing and we already have valid data, don't refetch (Offline-first)
+        if (
+          !force &&
+          get().planets &&
+          Object.keys(get().planets!).length > 0 &&
+          get().d9Chart
+        ) {
+          console.log('Using persisted astro data');
+          // Refresh coin status in background without setting full loading state
+          get().fetchCoinStatus();
+          return;
+        }
+
+        set({ loading: true, error: null });
+        const session = await authClient.getSession();
+        if (!session?.data?.session?.token) {
+          set({ loading: false, error: 'Not authenticated' });
+          return;
+        }
+
+        try {
+          const headers = {
+            Authorization: `Bearer ${session.data.session.token}`,
+          };
+
+          const [
+            planetsRes,
+            d9Res,
+            mahaDashasRes,
+            yoginiDashasRes,
+            transitRes,
+          ] = await Promise.all([
+            axios.get(`${BACKEND_URL}/api/astrology/planets-extended`, {
+              headers,
+              withCredentials: true,
+            }),
+            axios.get(`${BACKEND_URL}/api/astrology/d9-chart`, {
+              headers,
+              withCredentials: true,
+            }),
+            axios.get(`${BACKEND_URL}/api/astrology/maha-dashas`, {
+              headers,
+              withCredentials: true,
+            }),
+            axios.get(`${BACKEND_URL}/api/astrology/yogini-dasha`, {
+              headers,
+              withCredentials: true,
+            }),
+            axios.get(`${BACKEND_URL}/api/astrology/transit`, {
+              headers,
+              withCredentials: true,
+            }),
+          ]);
+
+          const natal = planetsRes.data;
+
+          // Calculate Special Planets (Karakas)
+          const majorPlanets = [
+            'Sun',
+            'Moon',
+            'Mars',
+            'Mercury',
+            'Jupiter',
+            'Venus',
+            'Saturn',
+          ]
+            .map((name) => ({
+              name,
+              degree: (natal[name]?.normDegree || 0) % 30,
+            }))
+            .sort((a, b) => b.degree - a.degree);
+
+          const atmakarakaName = majorPlanets[0].name;
+          const darakarakaName = majorPlanets[6].name;
+
+          const ascSign =
+            natal?.Ascendant?.sign_number || natal?.Ascendant?.current_sign;
+          const yogakarakaMap: Record<
+            number,
+            { name: string; houses: string }
+          > = {
+            2: { name: 'Saturn', houses: '9th & 10th' }, // Taurus
+            4: { name: 'Mars', houses: '5th & 10th' }, // Cancer
+            5: { name: 'Mars', houses: '4th & 9th' }, // Leo
+            7: { name: 'Saturn', houses: '4th & 5th' }, // Libra
+            10: { name: 'Venus', houses: '5th & 10th' }, // Capricorn
+            11: { name: 'Venus', houses: '4th & 9th' }, // Aquarius
+          };
+
+          const ykInfo = yogakarakaMap[ascSign];
+          const specialPlanets = {
+            atmakaraka: {
+              name: atmakarakaName,
+              details: natal[atmakarakaName],
+            },
+            darakaraka: {
+              name: darakarakaName,
+              details: natal[darakarakaName],
+            },
+            yogakaraka: ykInfo
+              ? {
+                  name: ykInfo.name,
+                  houses: ykInfo.houses,
+                  details: natal[ykInfo.name],
+                }
+              : null,
+          };
+
+          set({
+            user: session.data.user,
+            planets: natal,
+            d9Chart: d9Res.data,
+            specialPlanets,
+            mahaDashas: mahaDashasRes ? mahaDashasRes.data : [],
+            yoginiDashas: yoginiDashasRes ? yoginiDashasRes.data : [],
+            transitData: transitRes.data,
+            loading: false,
+          });
+          get().fetchCoinStatus(); // Update coin status after fetching astro data
+        } catch (err: any) {
+          console.error('Error fetching astro data', err);
+          set({
+            error: err.message || 'Failed to fetch astrology data',
+            loading: false,
+          });
+        }
+      },
+
+      fetchTransitData: async (force = false) => {
+        if (get().loading) return;
+        if (!force && get().transitData) return;
+
+        set({ loading: true, error: null });
+        const session = await authClient.getSession();
+        if (!session?.data?.session?.token) {
+          set({ loading: false, error: 'Not authenticated' });
+          return;
+        }
+        try {
+          const headers = {
+            Authorization: `Bearer ${session.data.session.token}`,
+          };
+          const res = await axios.get(`${BACKEND_URL}/api/astrology/transit`, {
             headers,
             withCredentials: true,
-          }),
-          axios.get(`${BACKEND_URL}/api/astrology/maha-dashas`, {
-            headers,
-            withCredentials: true,
-          }),
-          axios.get(`${BACKEND_URL}/api/astrology/yogini-dasha`, {
-            headers,
-            withCredentials: true,
-          }),
-          axios.get(`${BACKEND_URL}/api/astrology/transit`, {
-            headers,
-            withCredentials: true,
-          }),
-        ]);
+          });
+          set({ transitData: res.data, loading: false });
+        } catch (err: any) {
+          console.error('Error fetching transit data', err);
+          set({
+            error: err.message || 'Failed to fetch transit data',
+            loading: false,
+          });
+        }
+      },
 
-      const natal = planetsRes.data;
+      fetchMyTransitData: async (force = false) => {
+        if (get().loading) return;
+        if (!force && get().myTransitData) return;
 
-      // Calculate Special Planets (Karakas)
-      const majorPlanets = [
-        'Sun',
-        'Moon',
-        'Mars',
-        'Mercury',
-        'Jupiter',
-        'Venus',
-        'Saturn',
-      ]
-        .map((name) => ({
-          name,
-          degree: (natal[name]?.normDegree || 0) % 30,
-        }))
-        .sort((a, b) => b.degree - a.degree);
+        set({ loading: true, error: null });
+        const session = await authClient.getSession();
+        if (!session?.data?.session?.token) {
+          set({ loading: false, error: 'Not authenticated' });
+          return;
+        }
+        try {
+          const headers = {
+            Authorization: `Bearer ${session.data.session.token}`,
+          };
+          const res = await axios.get(
+            `${BACKEND_URL}/api/astrology/my-transit`,
+            {
+              headers,
+              withCredentials: true,
+            },
+          );
+          set({ myTransitData: res.data, loading: false });
+        } catch (err: any) {
+          console.error('Error fetching my transit data', err);
+          set({
+            error: err.message || 'Failed to fetch my transit data',
+            loading: false,
+          });
+        }
+      },
 
-      const atmakarakaName = majorPlanets[0].name;
-      const darakarakaName = majorPlanets[6].name;
+      fetchVimsottariDashas: async (force = false) => {
+        if (get().loading) return;
+        if (!force && get().mahaDashas.length > 0) return;
 
-      const ascSign =
-        natal?.Ascendant?.sign_number || natal?.Ascendant?.current_sign;
-      const yogakarakaMap: Record<number, { name: string; houses: string }> = {
-        2: { name: 'Saturn', houses: '9th & 10th' }, // Taurus
-        4: { name: 'Mars', houses: '5th & 10th' }, // Cancer
-        5: { name: 'Mars', houses: '4th & 9th' }, // Leo
-        7: { name: 'Saturn', houses: '4th & 5th' }, // Libra
-        10: { name: 'Venus', houses: '5th & 10th' }, // Capricorn
-        11: { name: 'Venus', houses: '4th & 9th' }, // Aquarius
-      };
+        set({ loading: true, error: null });
+        const session = await authClient.getSession();
+        if (!session?.data?.session?.token) {
+          set({ loading: false, error: 'Not authenticated' });
+          return;
+        }
+        try {
+          const headers = {
+            Authorization: `Bearer ${session.data.session.token}`,
+          };
+          const res = await axios.get(
+            `${BACKEND_URL}/api/astrology/maha-dashas`,
+            {
+              headers,
+              withCredentials: true,
+            },
+          );
+          set({ mahaDashas: res.data, loading: false });
+        } catch (err: any) {
+          console.error('Error fetching Vimsottari dashas', err);
+          set({
+            error: err.message || 'Failed to fetch Vimsottari dashas',
+            loading: false,
+          });
+        }
+      },
 
-      const ykInfo = yogakarakaMap[ascSign];
-      const specialPlanets = {
-        atmakaraka: { name: atmakarakaName, details: natal[atmakarakaName] },
-        darakaraka: { name: darakarakaName, details: natal[darakarakaName] },
-        yogakaraka: ykInfo
-          ? {
-              name: ykInfo.name,
-              houses: ykInfo.houses,
-              details: natal[ykInfo.name],
-            }
-          : null,
-      };
+      fetchYoginiDashas: async (force = false) => {
+        if (get().loading) return;
+        if (!force && get().yoginiDashas.length > 0) return;
 
-      set({
-        user: session.data.user,
-        planets: natal,
-        specialPlanets,
-        mahaDashas: mahaDashasRes ? mahaDashasRes.data : [],
-        yoginiDashas: yoginiDashasRes ? yoginiDashasRes.data : [],
-        transitData: transitRes.data,
-        loading: false,
-      });
-      get().fetchCoinStatus(); // Update coin status after fetching astro data
-    } catch (err: any) {
-      console.error('Error fetching astro data', err);
-      set({
-        error: err.message || 'Failed to fetch astrology data',
-        loading: false,
-      });
-    }
-  },
-
-  fetchTransitData: async () => {
-    set({ loading: true, error: null });
-    const session = await authClient.getSession();
-    if (!session?.data?.session?.token) {
-      set({ loading: false, error: 'Not authenticated' });
-      return;
-    }
-    try {
-      const headers = { Authorization: `Bearer ${session.data.session.token}` };
-      const res = await axios.get(`${BACKEND_URL}/api/astrology/transit`, {
-        headers,
-        withCredentials: true,
-      });
-      set({ transitData: res.data, loading: false });
-    } catch (err: any) {
-      console.error('Error fetching transit data', err);
-      set({
-        error: err.message || 'Failed to fetch transit data',
-        loading: false,
-      });
-    }
-  },
-
-  fetchMyTransitData: async () => {
-    set({ loading: true, error: null });
-    const session = await authClient.getSession();
-    if (!session?.data?.session?.token) {
-      set({ loading: false, error: 'Not authenticated' });
-      return;
-    }
-    try {
-      const headers = { Authorization: `Bearer ${session.data.session.token}` };
-      const res = await axios.get(`${BACKEND_URL}/api/astrology/my-transit`, {
-        headers,
-        withCredentials: true,
-      });
-      set({ myTransitData: res.data, loading: false });
-    } catch (err: any) {
-      console.error('Error fetching my transit data', err);
-      set({
-        error: err.message || 'Failed to fetch my transit data',
-        loading: false,
-      });
-    }
-  },
-
-  fetchVimsottariDashas: async () => {
-    set({ loading: true, error: null });
-    const session = await authClient.getSession();
-    if (!session?.data?.session?.token) {
-      set({ loading: false, error: 'Not authenticated' });
-      return;
-    }
-    try {
-      const headers = { Authorization: `Bearer ${session.data.session.token}` };
-      const res = await axios.get(`${BACKEND_URL}/api/astrology/maha-dashas`, {
-        headers,
-        withCredentials: true,
-      });
-      set({ mahaDashas: res.data, loading: false });
-    } catch (err: any) {
-      console.error('Error fetching Vimsottari dashas', err);
-      set({
-        error: err.message || 'Failed to fetch Vimsottari dashas',
-        loading: false,
-      });
-    }
-  },
-
-  fetchYoginiDashas: async () => {
-    set({ loading: true, error: null });
-    const session = await authClient.getSession();
-    if (!session?.data?.session?.token) {
-      set({ loading: false, error: 'Not authenticated' });
-      return;
-    }
-    try {
-      const headers = { Authorization: `Bearer ${session.data.session.token}` };
-      const res = await axios.get(`${BACKEND_URL}/api/astrology/yogini-dasha`, {
-        headers,
-        withCredentials: true,
-      });
-      set({ yoginiDashas: res.data, loading: false });
-    } catch (err: any) {
-      console.error('Error fetching Yogini dashas', err);
-      set({
-        error: err.message || 'Failed to fetch Yogini dashas',
-        loading: false,
-      });
-    }
-  },
-}));
+        set({ loading: true, error: null });
+        const session = await authClient.getSession();
+        if (!session?.data?.session?.token) {
+          set({ loading: false, error: 'Not authenticated' });
+          return;
+        }
+        try {
+          const headers = {
+            Authorization: `Bearer ${session.data.session.token}`,
+          };
+          const res = await axios.get(
+            `${BACKEND_URL}/api/astrology/yogini-dasha`,
+            {
+              headers,
+              withCredentials: true,
+            },
+          );
+          set({ yoginiDashas: res.data, loading: false });
+        } catch (err: any) {
+          console.error('Error fetching Yogini dashas', err);
+          set({
+            error: err.message || 'Failed to fetch Yogini dashas',
+            loading: false,
+          });
+        }
+      },
+    }),
+    {
+      name: 'astro-storage',
+      storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
+      partialize: (state) => ({
+        user: state.user,
+        planets: state.planets,
+        d9Chart: state.d9Chart,
+        specialPlanets: state.specialPlanets,
+        mahaDashas: state.mahaDashas,
+        yoginiDashas: state.yoginiDashas,
+        transitData: state.transitData,
+        myTransitData: state.myTransitData,
+        coins: state.coins,
+        canClaim: state.canClaim,
+      }),
+    },
+  ),
+);

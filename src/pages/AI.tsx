@@ -5,32 +5,30 @@ import { authClient } from '../lib/auth-client';
 import { MessageSquare, Plus, History, Bot, Send, MenuIcon } from 'lucide-react';
 import { LoadingPlanet } from '../components/LoadingPlanet';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useChatStore, ChatMessage } from '../store/chatStore';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-
-interface ChatMessage {
-  text: string;
-  type: 'sent' | 'received';
-  name: string;
-  time?: string;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  updatedAt: string;
-}
 
 export default function AIPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [messageText, setMessageText] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+
+  const {
+    messages,
+    conversations,
+    activeConversationId,
+    loading,
+    loadingHistory,
+    hydrated,
+    fetchConversations,
+    fetchMessages,
+    setMessages,
+    setActiveConversationId,
+    addMessage,
+  } = useChatStore();
+
   const [coins, setCoins] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -41,13 +39,15 @@ export default function AIPage() {
   }, []);
 
   useEffect(() => {
-    if (id) {
-      fetchMessages(id);
-    } else {
-      setActiveConversationId(null);
-      setMessages([]);
+    if (hydrated) {
+      if (id) {
+        fetchMessages(id);
+      } else {
+        setActiveConversationId(null);
+        setMessages([]);
+      }
     }
-  }, [id]);
+  }, [id, hydrated]);
 
   const fetchCoins = async () => {
     const session = await authClient.getSession();
@@ -63,51 +63,12 @@ export default function AIPage() {
     }
   };
 
-  const fetchConversations = async () => {
-    setLoadingHistory(true);
-    const session = await authClient.getSession();
-    if (!session?.data?.session?.token) return;
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/ai/conversations`, {
-        headers: { Authorization: `Bearer ${session.data.session.token}` },
-        withCredentials: true,
-      });
-      setConversations(res.data);
-    } catch (err) {
-      console.error('Error fetching conversations', err);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const fetchMessages = async (id: string) => {
-    setLoading(true);
-    const session = await authClient.getSession();
-    if (!session?.data?.session?.token) return;
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/ai/conversations/${id}`, {
-        headers: { Authorization: `Bearer ${session.data.session.token}` },
-        withCredentials: true,
-      });
-      const chatMessages: ChatMessage[] = res.data.messages.map((m: any) => ({
-        text: m.content,
-        type: m.role === 'user' ? 'sent' : 'received',
-        name: m.role === 'user' ? 'Me' : 'Astro AI',
-        time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }));
-      setMessages(chatMessages);
-      setActiveConversationId(id);
-    } catch (err) {
-      console.error('Error fetching messages', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchCoins();
-    fetchConversations();
-  }, []);
+    if (hydrated) {
+      fetchCoins();
+      fetchConversations();
+    }
+  }, [hydrated]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -129,8 +90,7 @@ export default function AIPage() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    const updatedMessages = [...messages, newMessage];
-    setMessages(updatedMessages);
+    addMessage(newMessage);
     setMessageText('');
 
     // Reset textarea height
@@ -138,8 +98,6 @@ export default function AIPage() {
     if (textarea) {
       textarea.style.height = 'auto';
     }
-
-    setLoading(true);
 
     const session = await authClient.getSession();
     try {
@@ -159,23 +117,21 @@ export default function AIPage() {
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
-      setMessages([...updatedMessages, aiMessage]);
+      addMessage(aiMessage);
       setCoins(res.data.coinsLeft);
 
       if (!activeConversationId) {
         navigate(`/ai/${res.data.conversationId}`, { replace: true });
-        fetchConversations();
+        fetchConversations(true);
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Failed to get response';
-      setMessages([...updatedMessages, {
+      addMessage({
         text: errorMessage,
         type: 'received',
         name: 'System',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-    } finally {
-      setLoading(false);
+      });
     }
   };
 

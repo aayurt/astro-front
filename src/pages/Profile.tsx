@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Page, Navbar, List, ListInput, Button, Block, Card, BlockTitle } from 'konsta/react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Block, BlockTitle, Button, List, ListInput, Navbar, Page } from 'konsta/react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { authClient } from '../lib/auth-client';
-import { User, LocationSearchResult } from '../types/api';
+import { useAstroStore } from '../store/astroStore';
+import { useChatStore } from '../store/chatStore';
+import { LocationSearchResult, User } from '../types/api';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user: storeUser, clearAstroData, hydrated, updateUser } = useAstroStore();
+  const { clearChatData } = useChatStore();
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('');
   const [location, setLocation] = useState('');
@@ -23,23 +26,21 @@ export default function ProfilePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const session = await authClient.getSession();
-      if (session?.data?.user) {
-        const u = session.data.user as any;
-        setUser(u);
-        setBirthDate(u.birthDate ? new Date(u.birthDate).toISOString().split('T')[0] : '');
-        setBirthTime(u.birthTime || '');
-        setLocation(u.location || '');
-        setLatitude(u.latitude?.toString() || '');
-        setLongitude(u.longitude?.toString() || '');
-        setTimezone(u.timezone || '');
-      } else {
-        navigate('/login');
-      }
-    };
-    fetchUser();
-  }, [navigate]);
+    if (hydrated && storeUser) {
+      setBirthDate(storeUser.birthDate ? new Date(storeUser.birthDate).toISOString().split('T')[0] : '');
+      setBirthTime(storeUser.birthTime || '');
+      setLocation(storeUser.location || '');
+      setLatitude(storeUser.latitude?.toString() || '');
+      setLongitude(storeUser.longitude?.toString() || '');
+      setTimezone(storeUser.timezone || '');
+    }
+  }, [hydrated, storeUser]);
+
+  useEffect(() => {
+    if (hydrated && !storeUser) {
+      navigate('/login');
+    }
+  }, [hydrated, storeUser, navigate]);
 
   const handleLocationSearch = async (query: string) => {
     setLocation(query);
@@ -101,14 +102,19 @@ export default function ProfilePage() {
     try {
       await axios.post(
         `${BACKEND_URL}/api/user/profile`,
-        { birthDate, birthTime, location, latitude, longitude, timezone },
+        { birthDate, birthTime, location, latitude: parseFloat(latitude), longitude: parseFloat(longitude), timezone },
         {
           headers: { Authorization: `Bearer ${session.data?.session.token}` },
           withCredentials: true,
         }
       );
+      // Update local store user
+      updateUser({ birthDate, birthTime, location, latitude: parseFloat(latitude), longitude: parseFloat(longitude), timezone });
       // Refresh session and user data
       await authClient.getSession();
+      // Clear astro data so it's refetched with new birth details
+      clearAstroData();
+      clearChatData();
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to update profile. Please try again.');
@@ -119,6 +125,8 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await authClient.signOut();
+    clearAstroData();
+    clearChatData();
     navigate('/login');
   };
 
@@ -130,8 +138,8 @@ export default function ProfilePage() {
         <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center text-3xl mb-4">
           👤
         </div>
-        <div className="text-xl font-bold">{user?.name || 'User'}</div>
-        <div className="text-gray-500 text-sm">{user?.email}</div>
+        <div className="text-xl font-bold">{storeUser?.name || 'User'}</div>
+        <div className="text-gray-500 text-sm">{storeUser?.email}</div>
       </Block>
 
       <BlockTitle>Edit Birth Details</BlockTitle>

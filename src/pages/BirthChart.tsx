@@ -12,6 +12,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import VedicChart from '../components/VedicChart';
 import { authClient } from '../lib/auth-client';
+import { useAstroStore } from '../store/astroStore';
 
 import { ChartData, PanchangData, User } from '../types/api';
 import { ZODIAC_SIGNS } from '../types/constants';
@@ -20,67 +21,16 @@ import { LoadingPlanet } from '../components/LoadingPlanet';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 export default function BirthChartPage() {
-  const [user, setUser] = React.useState<User | null>(null);
-  const [natalChart, setNatalChart] = React.useState<ChartData | null>(null);
-  const [d9Chart, setD9Chart] = React.useState<ChartData | null>(null);
-  const [planets, setPlanets] = React.useState<ChartData | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState('');
+  const { user, planets, d9Chart, loading, error, fetchAstroData, hydrated } = useAstroStore();
   const navigate = useNavigate();
 
-  const fetchAstroData = async () => {
-    setLoading(true);
-    setError('');
-    const session = await authClient.getSession();
-    if (!session || !session.data) {
-      navigate('/login');
-      return;
-    }
-    setUser(session.data.user);
-
-    const headers = {
-      Authorization: `Bearer ${session.data.session.token}`,
-    };
-
-    try {
-      const [d9,
-        // panchangRes, 
-        planetsRes] = await Promise.all([
-          axios.get(`${BACKEND_URL}/api/astrology/d9-chart`, {
-            headers,
-            withCredentials: true,
-          }),
-          // axios.get(`${BACKEND_URL}/api/astrology/panchang`, {
-          //   headers,
-          //   withCredentials: true,
-          // }),
-          axios.get(`${BACKEND_URL}/api/astrology/planets-extended`, {
-            headers,
-            withCredentials: true,
-          }),
-        ]);
-
-      setNatalChart(planetsRes.data);
-      setD9Chart(d9.data);
-      // setPanchang(panchangRes.data);
-      setPlanets(planetsRes.data);
-    } catch (err) {
-      console.error('Error fetching data', err);
-      if (err instanceof axios.AxiosError && err.response?.status === 400) {
-        navigate('/onboarding');
-      } else {
-        setError('Failed to load your astrology data. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   React.useEffect(() => {
-    fetchAstroData();
-  }, []);
+    if (hydrated) {
+      fetchAstroData();
+    }
+  }, [hydrated]);
 
-  if (loading)
+  if (loading && !planets)
     return (
       <Page>
         <Navbar title='Natal Chart' />
@@ -123,7 +73,7 @@ export default function BirthChartPage() {
         <div>
           <BlockTitle>Natal Chart (D1)</BlockTitle>
           <Card>
-            <VedicChart data={natalChart} title='D1 North Indian Chart' />
+            <VedicChart data={planets} title='D1 North Indian Chart' />
             <Card className='border border-gray-950/5 p-0 rounded-xl bg-[oklch(0.98_0_0)]'>
               <div className='pb-2 font-bold'>Planet Positions</div>
 

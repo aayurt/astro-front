@@ -3,12 +3,16 @@ import { Page, Navbar, List, ListInput, Button, Block } from 'konsta/react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { authClient } from '../lib/auth-client';
+import { useAstroStore } from '../store/astroStore';
+import { useChatStore } from '../store/chatStore';
 
 import { LocationSearchResult } from '../types/api';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 export default function OnboardingPage() {
+  const { clearAstroData, updateUser } = useAstroStore();
+  const { clearChatData } = useChatStore();
   const [birthDate, setBirthDate] = React.useState('');
   const [birthTime, setBirthTime] = React.useState('');
   const [location, setLocation] = React.useState('');
@@ -128,8 +132,8 @@ export default function OnboardingPage() {
           birthDate,
           birthTime,
           location,
-          latitude,
-          longitude,
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
           timezone,
         },
         {
@@ -139,6 +143,17 @@ export default function OnboardingPage() {
           withCredentials: true,
         },
       );
+      // Update local store user
+      updateUser({
+        birthDate,
+        birthTime,
+        location,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        timezone,
+      });
+      clearAstroData();
+      clearChatData();
       navigate('/dashboard');
     } catch (err: any) {
       setError(
