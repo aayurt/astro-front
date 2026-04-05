@@ -187,9 +187,10 @@ export default function ProfilePage() {
           </div>
         )}
         <ListInput
-          label="Timezone"
+          label='Timezone (Auto-detected from the location search)'
           type="text"
           value={timezone}
+          disabled={true}
           onInput={(e) => setTimezone(e.target.value)}
           info={fetchingTimezone ? 'Fetching timezone...' : ''}
         />

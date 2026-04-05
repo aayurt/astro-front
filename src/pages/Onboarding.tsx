@@ -244,10 +244,11 @@ export default function OnboardingPage() {
             onInput={(e) => setLongitude(e.target.value)}
           />
           <ListInput
-            label='Timezone'
+            label='Timezone (Auto-detected from the location search)'
             type='number'
             placeholder='e.g. 5.5'
             value={timezone}
+            disabled={true}
             onInput={(e) => setTimezone(e.target.value)}
             info={fetchingTimezone ? 'Fetching timezone...' : (timezoneName ? `Zone: ${timezoneName}` : '')}
           />
