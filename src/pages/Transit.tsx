@@ -1,93 +1,50 @@
-import axios from 'axios';
+import { useEffect, useState, useMemo } from 'react';
 import { Block, BlockTitle, Card, Navbar, Page, Preloader } from 'konsta/react';
-import { useEffect, useState } from 'react';
 import VedicChart from '../components/VedicChart';
-import { authClient } from '../lib/auth-client';
+import { useAstroStore } from '../store/astroStore';
 import { ChartData } from '../types/api';
 import { ZODIAC_SIGNS } from '../types/constants';
 import { LoadingPlanet } from '../components/LoadingPlanet';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-export const mapChartData = (data: any): ChartData => {
-  return Object.entries(data).reduce((acc, [key, planet]: [string, any]) => {
-    acc[key] = {
-      name: planet.name,
-      isRetro: planet.isRetro,
-      fullDegree: planet.fullDegree,
-      normDegree: planet.normDegree,
-      current_sign: planet.sign_number,
-      degrees: Number(parseFloat(planet.degree_in_sign).toFixed(2)),
-      zodiac_sign_name: planet.zodiac_sign_name,
-      house_number: planet.sign_number,
-    };
-
-    return acc;
-  }, {} as ChartData);
-};
 export default function TransitPage() {
-  const [transitData, setTransitData] = useState<ChartData | null>(null);
-  const [myTransitData, setMyTransitData] = useState<ChartData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { planets: natalPlanets, transitData, loading, error, fetchAstroData, hydrated } = useAstroStore();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const session = await authClient.getSession();
-        if (!session?.data?.session?.token) {
-          setError('Not authenticated');
-          setLoading(false);
-          return;
-        }
+    if (hydrated) {
+      fetchAstroData();
+    }
+  }, [hydrated]);
 
-        const headers = { Authorization: `Bearer ${session.data.session.token}` };
+  const myTransitData = useMemo(() => {
+    if (!natalPlanets || !transitData) return null;
 
-        const [transitRes, natalChart] = await Promise.all([
-          axios.get(`${BACKEND_URL}/api/astrology/transit`, { headers, withCredentials: true }),
-          axios.get(`${BACKEND_URL}/api/astrology/planets-extended`, {
-            headers,
-            withCredentials: true,
-          }),
-        ]);
-        setTransitData(transitRes.data);
-        const transitData = transitRes.data;
-        const result: Record<string, any> = {};
-        const targetAscHouseNumber = natalChart.data.Ascendant.current_sign;
-        const targetAscZodiac = natalChart.data.Ascendant.zodiac_sign_lord;
-        const currentTransitAscHouseNumber = (Object.entries(transitData).find(([key]) => key === targetAscZodiac)?.[1] as any)?.house_number || 1;
-        const shift = 12 - currentTransitAscHouseNumber;
-        // 3
-        // 2(which house currently)
+    const result: Record<string, any> = {};
+    const targetAscHouseNumber = natalPlanets.Ascendant.current_sign;
+    const targetAscZodiac = natalPlanets.Ascendant.zodiac_sign_lord;
+    const currentTransitAscHouseNumber = (Object.entries(transitData).find(([key]) => key === targetAscZodiac)?.[1] as any)?.house_number || 1;
+    const shift = 12 - currentTransitAscHouseNumber;
 
-        for (const [planet, info] of Object.entries(transitData) as [string, any][]) {
-          const houseNumber = info.house_number
-          const newHouseNumber = ((houseNumber + shift) % 12) || 12;
+    for (const [planet, info] of Object.entries(transitData) as [string, any][]) {
+      const houseNumber = info.house_number;
+      const newHouseNumber = ((houseNumber + shift) % 12) || 12;
 
-          result[planet] = {
-            ...info,
-            original_house_number: houseNumber,
-            house_number: newHouseNumber,
-          };
-        }
-        result.Ascendant = {
-          ...result.Ascendant,
-          current_sign: targetAscHouseNumber,
-        };
+      result[planet] = {
+        ...info,
+        original_house_number: houseNumber,
+        house_number: newHouseNumber,
+      };
+    }
 
-        setMyTransitData(result);
-      } catch (err: any) {
-        console.error('Error fetching transit data:', err);
-        setError(err.message || 'Failed to fetch transit data');
-      } finally {
-        setLoading(false);
-      }
+    result.Ascendant = {
+      ...result.Ascendant,
+      current_sign: targetAscHouseNumber,
     };
 
-    fetchData();
-  }, []);
+    return result as ChartData;
+  }, [natalPlanets, transitData]);
 
-  const planets = transitData
-  const myTransitPlanets = myTransitData
+  const planets = transitData;
+  const myTransitPlanets = myTransitData;
 
 
   return (

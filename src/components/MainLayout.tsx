@@ -35,7 +35,7 @@ const MainLayout = () => {
               <Button
                 small
                 rounded
-                className="bg-white text-indigo-600 w-auto px-6 font-bold hover:bg-gray-100 shadow-sm"
+                className="bg-white text-indigo-600 w-auto px-6 font-bold hover:bg-gray-100 shadow-sm mr-4"
                 onClick={installPWA}
               >
                 Install

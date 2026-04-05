@@ -60,7 +60,7 @@ export default function LoginPage() {
             Login with Google
           </Button>
         </Block> */}
-        <Block className='text-center'>
+        <Block className='text-center text-blue-500'>
           <Link to='/signup'>Don't have an account? Sign up</Link>
         </Block>
       </Block>

@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { Block, BlockTitle, Button, List, ListInput, Navbar, Page } from 'konsta/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '../lib/auth-client';
 import { useAstroStore } from '../store/astroStore';
 import { useChatStore } from '../store/chatStore';
+import { debounce } from '../utils/debounce';
 import { LocationSearchResult, User } from '../types/api';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
@@ -42,31 +43,39 @@ export default function ProfilePage() {
     }
   }, [hydrated, storeUser, navigate]);
 
-  const handleLocationSearch = async (query: string) => {
-    setLocation(query);
+  const debouncedSearch = useMemo(
+    () =>
+      debounce(async (query: string) => {
+        if (query.length < 3) {
+          setSearchResults([]);
+          return;
+        }
+        setSearching(true);
+        const session = await authClient.getSession();
+        try {
+          const res = await axios.post(
+            `${BACKEND_URL}/api/location/search`,
+            { location: query },
+            {
+              headers: { Authorization: `Bearer ${session.data?.session.token}` },
+              withCredentials: true,
+            },
+          );
+          setSearchResults(res.data);
+        } catch (err) {
+          console.error('Search error', err);
+          setError('Failed to search locations');
+        } finally {
+          setSearching(false);
+        }
+      }, 1000),
+    [],
+  );
+
+  const handleLocationInput = (val: string) => {
+    setLocation(val);
     setError('');
-    if (query.length < 3) {
-      setSearchResults([]);
-      return;
-    }
-    setSearching(true);
-    const session = await authClient.getSession();
-    try {
-      const res = await axios.post(
-        `${BACKEND_URL}/api/location/search`,
-        { location: query },
-        {
-          headers: { Authorization: `Bearer ${session.data?.session.token}` },
-          withCredentials: true,
-        },
-      );
-      setSearchResults(res.data);
-    } catch (err) {
-      console.error('Search error', err);
-      setError('Failed to search locations');
-    } finally {
-      setSearching(false);
-    }
+    debouncedSearch(val);
   };
 
   const selectLocation = async (res: LocationSearchResult) => {
@@ -161,7 +170,7 @@ export default function ProfilePage() {
           type="text"
           placeholder="Search birthplace"
           value={location}
-          onInput={(e) => handleLocationSearch(e.target.value)}
+          onInput={(e) => handleLocationInput(e.target.value)}
           info={searching ? 'Searching...' : ''}
         />
         {searchResults.length > 0 && (
