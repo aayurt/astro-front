@@ -26,10 +26,13 @@ interface ChatState {
   loadingHistory: boolean;
   hydrated: boolean;
   error: string | null;
-  
+  lastFetchedConversationsAt: number | null;
+  lastFetchedMessagesAt: Record<string, number>;
+
   setHydrated: (val: boolean) => void;
   setMessages: (messages: ChatMessage[]) => void;
   setActiveConversationId: (id: string | null) => void;
+  setLoading: (loading: boolean) => void;
   fetchConversations: (force?: boolean) => Promise<void>;
   fetchMessages: (id: string, force?: boolean) => Promise<void>;
   addMessage: (message: ChatMessage) => void;
@@ -46,32 +49,46 @@ export const useChatStore = create<ChatState>()(
       loadingHistory: false,
       hydrated: false,
       error: null,
+      lastFetchedConversationsAt: null,
+      lastFetchedMessagesAt: {},
 
       setHydrated: (val: boolean) => set({ hydrated: val }),
-      
+
       setMessages: (messages) => set({ messages }),
-      
+
       setActiveConversationId: (id) => set({ activeConversationId: id }),
 
-      addMessage: (message) => set((state) => ({ 
-        messages: [...state.messages, message] 
-      })),
+      setLoading: (loading: boolean) => set({ loading }),
 
-      clearChatData: () => set({
-        messages: [],
-        conversations: [],
-        activeConversationId: null,
-        error: null,
-      }),
+      addMessage: (message) =>
+        set((state) => ({
+          messages: [...state.messages, message],
+        })),
+
+      clearChatData: () =>
+        set({
+          messages: [],
+          conversations: [],
+          activeConversationId: null,
+          error: null,
+        }),
 
       fetchConversations: async (force = false) => {
         if (get().loadingHistory) return;
-        
+
         // Wait for hydration before checking cache
         if (!force && !get().hydrated) return;
 
-        if (!force && get().conversations.length > 0) {
-          console.log('Using cached conversations');
+        const now = Date.now();
+        const ONE_MINUTE = 60 * 1000;
+
+        // If not forced, skip if fetched in the last minute
+        if (
+          !force &&
+          get().lastFetchedConversationsAt &&
+          now - (get().lastFetchedConversationsAt || 0) < ONE_MINUTE
+        ) {
+          console.log('Using cached conversations (fresh)');
           return;
         }
 
@@ -87,23 +104,45 @@ export const useChatStore = create<ChatState>()(
             headers: { Authorization: `Bearer ${session.data.session.token}` },
             withCredentials: true,
           });
-          set({ conversations: res.data, loadingHistory: false });
+          set({
+            conversations: res.data,
+            loadingHistory: false,
+            lastFetchedConversationsAt: now,
+          });
         } catch (err: any) {
           console.error('Error fetching conversations', err);
-          set({ error: err.message || 'Failed to fetch conversations', loadingHistory: false });
+          set({
+            error: err.message || 'Failed to fetch conversations',
+            loadingHistory: false,
+          });
         }
       },
 
       fetchMessages: async (id, force = false) => {
         if (get().loading) return;
-        
+
         // Wait for hydration before checking cache
         if (!force && !get().hydrated) return;
 
-        // If we are already viewing this conversation and have messages, skip fetch unless forced
-        if (!force && get().activeConversationId === id && get().messages.length > 0) {
-          console.log('Using cached messages for conversation:', id);
-          return;
+        const conversation = get().conversations.find((c) => c.id === id);
+        const lastFetched = get().lastFetchedMessagesAt[id] || 0;
+
+        // If not forced, only skip if we have messages AND the conversation hasn't been updated since last fetch
+        if (
+          !force &&
+          get().activeConversationId === id &&
+          get().messages.length > 0
+        ) {
+          if (
+            conversation &&
+            new Date(conversation.updatedAt).getTime() <= lastFetched
+          ) {
+            console.log(
+              'Using cached messages for conversation (up to date):',
+              id,
+            );
+            return;
+          }
         }
 
         set({ loading: true, activeConversationId: id });
@@ -114,22 +153,42 @@ export const useChatStore = create<ChatState>()(
         }
 
         try {
-          const res = await axios.get(`${BACKEND_URL}/api/ai/conversations/${id}`, {
-            headers: { Authorization: `Bearer ${session.data.session.token}` },
-            withCredentials: true,
-          });
-          
-          const chatMessages: ChatMessage[] = res.data.messages.map((m: any) => ({
-            text: m.content,
-            type: m.role === 'user' ? 'sent' : 'received',
-            name: m.role === 'user' ? 'Me' : 'Astro AI',
-            time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          const res = await axios.get(
+            `${BACKEND_URL}/api/ai/conversations/${id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.data.session.token}`,
+              },
+              withCredentials: true,
+            },
+          );
+
+          const chatMessages: ChatMessage[] = res.data.messages.map(
+            (m: any) => ({
+              text: m.content,
+              type: m.role === 'user' ? 'sent' : 'received',
+              name: m.role === 'user' ? 'Me' : 'Astro AI',
+              time: new Date(m.createdAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+            }),
+          );
+
+          set((state) => ({
+            messages: chatMessages,
+            loading: false,
+            lastFetchedMessagesAt: {
+              ...state.lastFetchedMessagesAt,
+              [id]: Date.now(),
+            },
           }));
-          
-          set({ messages: chatMessages, loading: false });
         } catch (err: any) {
           console.error('Error fetching messages', err);
-          set({ error: err.message || 'Failed to fetch messages', loading: false });
+          set({
+            error: err.message || 'Failed to fetch messages',
+            loading: false,
+          });
         }
       },
     }),
@@ -143,7 +202,9 @@ export const useChatStore = create<ChatState>()(
         messages: state.messages,
         conversations: state.conversations,
         activeConversationId: state.activeConversationId,
+        lastFetchedConversationsAt: state.lastFetchedConversationsAt,
+        lastFetchedMessagesAt: state.lastFetchedMessagesAt,
       }),
-    }
-  )
+    },
+  ),
 );

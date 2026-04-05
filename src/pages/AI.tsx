@@ -25,6 +25,7 @@ export default function AIPage() {
     fetchMessages,
     setMessages,
     setActiveConversationId,
+    setLoading,
     addMessage,
   } = useChatStore();
 
@@ -92,6 +93,7 @@ export default function AIPage() {
 
     addMessage(newMessage);
     setMessageText('');
+    setLoading(true);
 
     // Reset textarea height
     const textarea = document.querySelector('textarea');
@@ -101,7 +103,7 @@ export default function AIPage() {
 
     const session = await authClient.getSession();
     try {
-      const res = await axios.post(`${BACKEND_URL}/api/ai/chat`,
+      const res = await axios.post(`${BACKEND_URL}/api/ai/chat2`,
         { message: text, conversationId: activeConversationId },
         {
           headers: { Authorization: `Bearer ${session.data?.session.token}` },
@@ -119,6 +121,7 @@ export default function AIPage() {
 
       addMessage(aiMessage);
       setCoins(res.data.coinsLeft);
+      setLoading(false);
 
       if (!activeConversationId) {
         navigate(`/ai/${res.data.conversationId}`, { replace: true });
@@ -132,6 +135,7 @@ export default function AIPage() {
         name: 'System',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
+      setLoading(false);
     }
   };
 
@@ -259,6 +263,12 @@ export default function AIPage() {
               setMessageText(e.target.value);
               e.target.style.height = 'auto';
               e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onKeyDown={(e: any) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
             }}
             disabled={coins <= 0}
             className="border-t border-gray-100 relative rounded-md shadow-md md:shadow-lg [&_textarea]:resize-none [&_textarea]:max-h-48"
