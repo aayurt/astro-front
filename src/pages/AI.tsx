@@ -2,12 +2,49 @@ import { useState, useEffect, useRef } from 'react';
 import { Page, Navbar, BlockTitle, List, ListItem, Button, Message, Messagebar, Messages, Preloader, Icon } from 'konsta/react';
 import axios from 'axios';
 import { authClient } from '../lib/auth-client';
-import { MessageSquare, Plus, History, Bot, Send, MenuIcon } from 'lucide-react';
+import { MessageSquare, Plus, History, Bot, Send, MenuIcon, Sparkles, Zap, Mic } from 'lucide-react';
 import { LoadingPlanet } from '../components/LoadingPlanet';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useChatStore, ChatMessage } from '../store/chatStore';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+
+const formatMessageText = (text: string) => {
+  if (!text) return text;
+
+  const labels = [
+    { key: 'Recommended Remedies:', icon: <Sparkles className="w-4 h-4 text-amber-500 inline mr-1" /> },
+    { key: 'Lal Kitab Remedies:', icon: <Zap className="w-4 h-4 text-indigo-500 inline mr-1" /> },
+    { key: 'Mantras:', icon: <Mic className="w-4 h-4 text-purple-500 inline mr-1" /> }
+  ];
+
+  let parts: (string | any)[] = [text];
+
+  labels.forEach(({ key, icon }) => {
+    const nextParts: (string | any)[] = [];
+    parts.forEach(part => {
+      if (typeof part === 'string') {
+        const subParts = part.split(key);
+        subParts.forEach((subPart, i) => {
+          nextParts.push(subPart);
+          if (i < subParts.length - 1) {
+            nextParts.push(
+              <div key={`${key}-${i}`} className="mt-4 mb-2 flex items-center bg-gray-50/50 p-2 rounded-lg border border-gray-100">
+                {icon}
+                <span className="font-bold text-indigo-900 text-xs uppercase tracking-wider">{key}</span>
+              </div>
+            );
+          }
+        });
+      } else {
+        nextParts.push(part);
+      }
+    });
+    parts = nextParts;
+  });
+
+  return <>{parts}</>;
+};
 
 export default function AIPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,7 +68,30 @@ export default function AIPage() {
 
   const [coins, setCoins] = useState<number>(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const loadingMessages = [
+    "Consulting your birth chart...",
+    "Analyzing planetary transits...",
+    "Calculating dasha periods...",
+    "Synthesizing cosmic patterns...",
+    "Revealing celestial insights...",
+    "Creating personalized recommendations..."
+  ];
+
+  useEffect(() => {
+    let interval: any;
+    if (loading) {
+      setLoadingStep(0);
+      interval = setInterval(() => {
+        setLoadingStep((prev) => (prev + 1) % loadingMessages.length);
+      }, 3000);
+    } else {
+      setLoadingStep(0);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   useEffect(() => {
     if (window.innerWidth >= 768) {
@@ -67,7 +127,7 @@ export default function AIPage() {
   useEffect(() => {
     if (hydrated) {
       fetchCoins();
-      fetchConversations();
+      fetchConversations(true); // Force fetch on mount of AI page
     }
   }, [hydrated]);
 
@@ -122,10 +182,10 @@ export default function AIPage() {
       addMessage(aiMessage);
       setCoins(res.data.coinsLeft);
       setLoading(false);
+      fetchConversations(true); // Always refresh the conversation list to update titles/timestamps
 
       if (!activeConversationId) {
         navigate(`/ai/${res.data.conversationId}`, { replace: true });
-        fetchConversations(true);
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Failed to get response';
@@ -236,19 +296,20 @@ export default function AIPage() {
                     key={index}
                     type={msg.type}
                     name={msg.name}
-                    text={msg.text}
+                    text={formatMessageText(msg.text)}
                     footer={<div className={`text-xs text-gray-400 flex ${msg.type !== 'received' ? 'justify-end' : 'justify-start'} mt-1`}>{msg.time}</div>}
                     className="mb-4 text-sm py-2 whitespace-pre-wrap"
                   />
                 </>
                 )
               })}
-              {loading && activeConversationId && (
+              {loading && (
                 <Message
                   type="received"
                   name="Astro AI"
-                  text="Thinking..."
+                  text={loadingMessages[loadingStep]}
                   footer={new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  className="italic text-indigo-600/70"
                 />
               )}
               {loading && <LoadingPlanet />}

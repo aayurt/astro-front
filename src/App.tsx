@@ -12,6 +12,7 @@ import AIPage from './pages/AI';
 import BirthChartPage from './pages/BirthChart';
 import TransitPage from './pages/Transit';
 import ProfilePage from './pages/Profile';
+import InvalidateCache from './pages/InvalidateCache';
 import MainLayout from './components/MainLayout';
 import { Page, Navbar, Block, Button } from 'konsta/react';
 
@@ -44,6 +45,7 @@ function App() {
         <Route path='/login' element={<LoginPage />} />
         <Route path='/signup' element={<SignupPage />} />
         <Route path='/onboarding' element={<OnboardingPage />} />
+        <Route path='/invalidate-cache' element={<InvalidateCache />} />
 
         {/* Protected routes with Bottom Nav */}
         <Route element={<MainLayout />}>

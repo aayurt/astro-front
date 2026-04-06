@@ -71,6 +71,8 @@ export const useChatStore = create<ChatState>()(
           conversations: [],
           activeConversationId: null,
           error: null,
+          lastFetchedConversationsAt: null,
+          lastFetchedMessagesAt: {},
         }),
 
       fetchConversations: async (force = false) => {
@@ -82,9 +84,10 @@ export const useChatStore = create<ChatState>()(
         const now = Date.now();
         const ONE_MINUTE = 60 * 1000;
 
-        // If not forced, skip if fetched in the last minute
+        // If not forced, skip if fetched in the last minute AND we have conversations
         if (
           !force &&
+          get().conversations.length > 0 &&
           get().lastFetchedConversationsAt &&
           now - (get().lastFetchedConversationsAt || 0) < ONE_MINUTE
         ) {
@@ -94,23 +97,33 @@ export const useChatStore = create<ChatState>()(
 
         set({ loadingHistory: true });
         const session = await authClient.getSession();
+        console.log(
+          'Session retrieved for conversations:',
+          !!session?.data?.session?.token,
+        );
         if (!session?.data?.session?.token) {
+          console.log('No token found, skipping fetch');
           set({ loadingHistory: false });
           return;
         }
 
         try {
+          console.log(
+            'Fetching conversations from:',
+            `${BACKEND_URL}/api/ai/conversations`,
+          );
           const res = await axios.get(`${BACKEND_URL}/api/ai/conversations`, {
             headers: { Authorization: `Bearer ${session.data.session.token}` },
             withCredentials: true,
           });
+          console.log('Conversations fetched:', res.data.length);
           set({
             conversations: res.data,
             loadingHistory: false,
             lastFetchedConversationsAt: now,
           });
         } catch (err: any) {
-          console.error('Error fetching conversations', err);
+          console.error('Error fetching conversations:', err);
           set({
             error: err.message || 'Failed to fetch conversations',
             loadingHistory: false,
