@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Page, Navbar, BlockTitle, List, ListItem, Button, Message, Messagebar, Messages, Preloader, Icon } from 'konsta/react';
 import axios from 'axios';
 import { authClient } from '../lib/auth-client';
-import { MessageSquare, Plus, History, Bot, Send, MenuIcon, Sparkles, Zap, Mic } from 'lucide-react';
+import { MessageSquare, Plus, History, Bot, Send, MenuIcon, Sparkles, Zap, Mic, RefreshCw } from 'lucide-react';
 import { LoadingPlanet } from '../components/LoadingPlanet';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useChatStore, ChatMessage } from '../store/chatStore';
@@ -188,11 +188,19 @@ export default function AIPage() {
         navigate(`/ai/${res.data.conversationId}`, { replace: true });
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Failed to get response';
+      console.error('Chat error:', err);
+      let errorMessage = 'I am sorry, I am currently unable to access my celestial insights. Please try again later.';
+
+      if (err.code === 'ECONNABORTED') {
+        errorMessage = 'The cosmic connection is taking longer than usual. Please try again in a moment.';
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      }
+
       addMessage({
         text: errorMessage,
         type: 'received',
-        name: 'System',
+        name: 'Astro AI',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
       setLoading(false);
@@ -214,11 +222,25 @@ export default function AIPage() {
           </Button>
         }
         right={
-          <>
-          </>
+          <div className="flex items-center gap-2 mr-2">
+            <Button
+              clear
+              onClick={() => {
+                if (id) {
+                  fetchMessages(id);
+                } else {
+                  fetchConversations(true);
+                }
+                fetchCoins();
+              }}
+              className="p-2!"
+            >
+              <RefreshCw size={20} className="text-gray-400 active:text-indigo-600 transition-colors" />
+            </Button>
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 inset-ring inset-ring-yellow-600/20 whitespace-nowrap">🪙 {coins} Coins</span>
+          </div>
         }
       >
-        <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 inset-ring inset-ring-yellow-600/20">🪙 {coins} Coins</span>
       </Navbar>
 
       <div className="flex h-[calc(100vh-160px)] overflow-hidden relative">
