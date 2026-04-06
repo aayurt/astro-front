@@ -2,24 +2,32 @@ import React from 'react';
 import { Page, Navbar, List, ListInput, Button, Block } from 'konsta/react';
 import { authClient } from '../lib/auth-client';
 import { useNavigate, Link } from 'react-router-dom';
+import { LoadingPlanet } from '../components/LoadingPlanet';
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleLogin = async () => {
     setLoading(true);
-    const { error } = await authClient.signIn.email({
-      email,
-      password,
-    });
-    setLoading(false);
-    if (!error) {
-      navigate('/dashboard');
-    } else {
-      alert(error.message);
+    setErrorMessage(null);
+    try {
+      const { error } = await authClient.signIn.email({
+        email,
+        password,
+      });
+      if (!error) {
+        navigate('/dashboard');
+      } else {
+        setErrorMessage(error.message || 'The cosmic connection failed. Please check your credentials.');
+      }
+    } catch (err: any) {
+      setErrorMessage('I am sorry, I am currently unable to access my celestial insights. Please try again later.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,7 +41,13 @@ export default function LoginPage() {
   return (
     <Page>
       <Navbar title='Login' />
+      {loading && <LoadingPlanet />}
       <Block strong>
+        {errorMessage && (
+          <Block className="text-red-500 text-sm text-center mb-4 italic">
+            {errorMessage}
+          </Block>
+        )}
         <List strongIos insetIos>
           <ListInput
             label='Email'

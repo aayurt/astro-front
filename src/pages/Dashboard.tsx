@@ -16,6 +16,7 @@ import { YoginiDasha } from '../components/YoginiDasha';
 import { useAstroStore } from '../store/astroStore';
 import { PlanetModel } from '../components/PlanetModel';
 import { LoadingPlanet } from '../components/LoadingPlanet';
+import { RefreshCw } from 'lucide-react';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export default function DashboardPage() {
     loading,
     error,
     fetchAstroData,
+    fetchCoinStatus,
     claimDailyCoins,
   } = useAstroStore();
 
@@ -86,11 +88,21 @@ export default function DashboardPage() {
         title='Dashboard'
         className=''
         right={
-          <>
-          </>
+          <div className="flex items-center gap-2 mr-2">
+            <Button
+              clear
+              onClick={() => {
+                fetchAstroData(true);
+                fetchCoinStatus();
+              }}
+              className="p-2!"
+            >
+              <RefreshCw size={20} className={`text-gray-400 active:text-indigo-600 transition-colors ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 inset-ring inset-ring-yellow-600/20 whitespace-nowrap">🪙 {coins} Coins</span>
+          </div>
         }
       >
-        <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 inset-ring inset-ring-yellow-600/20">🪙 {coins} Coins</span>
       </Navbar>
 
       <Card className='border border-gray-300 rounded-lg'>
