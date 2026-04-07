@@ -45,12 +45,12 @@ function App() {
       <Routes>
         {/* Public Routes - Only accessible when NOT logged in */}
         <Route element={<PublicRoute />}>
-          <Route path='/' element={<LandingPage />} />
           <Route path='/login' element={<LoginPage />} />
           <Route path='/signup' element={<SignupPage />} />
         </Route>
 
         <Route path='/invalidate-cache' element={<InvalidateCache />} />
+        <Route path='/reset' element={<InvalidateCache />} />
 
         {/* Protected Routes - Only accessible when logged in */}
         <Route element={<ProtectedRoute />}>
@@ -65,7 +65,7 @@ function App() {
           </Route>
         </Route>
 
-        <Route path='*' element={<Navigate to='/' />} />
+        <Route path='*' element={<Navigate to='/login' />} />
       </Routes>
     </Router>
   );

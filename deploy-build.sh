@@ -14,11 +14,11 @@ rsync -avz --delete \
   $LOCAL_PATH/dist/ \
   $SERVER:$REMOTE_PATH/
 
-echo "🔁 Restarting server..."
-ssh $SERVER "bash -c '
-  source ~/.nvm/nvm.sh
-  cd $REMOTE_PATH
-  pm2 restart ecosystem.config.cjs
-  pm2 save
-  echo \"🎉 Deploy complete!\"
-'"
+echo "✅ Done"
+# ssh $SERVER "bash -c '
+#   source ~/.nvm/nvm.sh
+#   cd $REMOTE_PATH
+#   pm2 restart ecosystem.config.cjs
+#   pm2 save
+#   echo \"🎉 Deploy complete!\"
+# '"

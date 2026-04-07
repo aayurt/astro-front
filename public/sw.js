@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astro-guru-v1';
+const CACHE_NAME = 'astro-guru-v2';
 const ASSETS_TO_CACHE = ['/', '/index.html', '/manifest.json', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
