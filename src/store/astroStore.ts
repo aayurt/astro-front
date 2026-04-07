@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import axios from 'axios';
 import { authClient } from '../lib/auth-client';
+import apiClient from '../lib/api-client';
 import { ChartData, MahaDasha, YoginiDasha, User } from '../types/api';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 interface AstroState {
   user: User | null;
@@ -18,15 +16,18 @@ interface AstroState {
   coins: number;
   canClaim: boolean;
   loading: boolean;
+  loadingAiPersona: boolean; // New dedicated loading state for AI Persona
   hydrated: boolean;
   error: string | null;
-  fetchAstroData: (force?: boolean) => Promise<void>;
+  fetchAstroData: (force?: boolean, token?: string) => Promise<void>;
   fetchCoinStatus: () => Promise<void>;
   claimDailyCoins: () => Promise<void>;
   fetchTransitData: (force?: boolean) => Promise<void>;
   fetchMyTransitData: (force?: boolean) => Promise<void>;
   fetchVimsottariDashas: (force?: boolean) => Promise<void>;
   fetchYoginiDashas: (force?: boolean) => Promise<void>;
+  fetchAiPersona: () => Promise<void>;
+  refreshData: () => Promise<void>;
   clearAstroData: () => void;
   setHydrated: (val: boolean) => void;
   updateUser: (userData: Partial<User>) => void;
@@ -46,6 +47,7 @@ export const useAstroStore = create<AstroState>()(
       coins: 0,
       canClaim: false,
       loading: false,
+      loadingAiPersona: false, // Initialize the new loading state
       hydrated: false,
       error: null,
 
@@ -60,7 +62,6 @@ export const useAstroStore = create<AstroState>()(
 
       clearAstroData: () => {
         set({
-          user: null,
           planets: null,
           d9Chart: null,
           specialPlanets: null,
@@ -68,24 +69,13 @@ export const useAstroStore = create<AstroState>()(
           yoginiDashas: [],
           transitData: null,
           myTransitData: null,
-          coins: 0,
-          canClaim: false,
           error: null,
         });
       },
 
       fetchCoinStatus: async () => {
-        const session = await authClient.getSession();
-        if (!session?.data?.session?.token) {
-          set({ coins: 0, canClaim: false });
-          return;
-        }
-
         try {
-          const res = await axios.get(`${BACKEND_URL}/api/user/coins`, {
-            headers: { Authorization: `Bearer ${session.data.session.token}` },
-            withCredentials: true,
-          });
+          const res = await apiClient.get('/api/user/coins');
           set({ coins: res.data.coins, canClaim: res.data.canClaim });
         } catch (err: any) {
           console.error('Error fetching coins', err);
@@ -97,18 +87,8 @@ export const useAstroStore = create<AstroState>()(
         if (!get().canClaim) return;
 
         set({ loading: true });
-        const session = await authClient.getSession();
         try {
-          const res = await axios.post(
-            `${BACKEND_URL}/api/user/claim-coins`,
-            {},
-            {
-              headers: {
-                Authorization: `Bearer ${session.data?.session.token}`,
-              },
-              withCredentials: true,
-            },
-          );
+          const res = await apiClient.post('/api/user/claim-coins', {});
           set({ coins: res.data.coins, canClaim: false, loading: false });
         } catch (err: any) {
           console.error('Error claiming coins', err);
@@ -119,7 +99,7 @@ export const useAstroStore = create<AstroState>()(
         }
       },
 
-      fetchAstroData: async (force = false) => {
+      fetchAstroData: async (force = false, token?: string) => {
         // Prevent concurrent fetches
         if (get().loading) return;
 
@@ -143,17 +123,23 @@ export const useAstroStore = create<AstroState>()(
         }
 
         set({ loading: true, error: null });
-        const session = await authClient.getSession();
-        if (!session?.data?.session?.token) {
+
+        // Use provided token or fetch a new session
+        let sessionToken = token;
+        let userData = null;
+
+        if (!sessionToken) {
+          const session = await authClient.getSession();
+          sessionToken = session?.data?.session?.token;
+          userData = session?.data?.user;
+        }
+
+        if (!sessionToken) {
           set({ loading: false, error: 'Not authenticated' });
           return;
         }
 
         try {
-          const headers = {
-            Authorization: `Bearer ${session.data.session.token}`,
-          };
-
           const [
             planetsRes,
             d9Res,
@@ -161,26 +147,11 @@ export const useAstroStore = create<AstroState>()(
             yoginiDashasRes,
             transitRes,
           ] = await Promise.all([
-            axios.get(`${BACKEND_URL}/api/astrology/planets-extended`, {
-              headers,
-              withCredentials: true,
-            }),
-            axios.get(`${BACKEND_URL}/api/astrology/d9-chart`, {
-              headers,
-              withCredentials: true,
-            }),
-            axios.get(`${BACKEND_URL}/api/astrology/maha-dashas`, {
-              headers,
-              withCredentials: true,
-            }),
-            axios.get(`${BACKEND_URL}/api/astrology/yogini-dasha`, {
-              headers,
-              withCredentials: true,
-            }),
-            axios.get(`${BACKEND_URL}/api/astrology/transit`, {
-              headers,
-              withCredentials: true,
-            }),
+            apiClient.get('/api/astrology/planets-extended'),
+            apiClient.get('/api/astrology/d9-chart'),
+            apiClient.get('/api/astrology/maha-dashas'),
+            apiClient.get('/api/astrology/yogini-dasha'),
+            apiClient.get('/api/astrology/transit'),
           ]);
 
           const natal = planetsRes.data;
@@ -238,7 +209,7 @@ export const useAstroStore = create<AstroState>()(
           };
 
           set({
-            user: session.data.user,
+            user: userData || get().user,
             planets: natal,
             d9Chart: d9Res.data,
             specialPlanets,
@@ -262,19 +233,8 @@ export const useAstroStore = create<AstroState>()(
         if (!force && get().transitData) return;
 
         set({ loading: true, error: null });
-        const session = await authClient.getSession();
-        if (!session?.data?.session?.token) {
-          set({ loading: false, error: 'Not authenticated' });
-          return;
-        }
         try {
-          const headers = {
-            Authorization: `Bearer ${session.data.session.token}`,
-          };
-          const res = await axios.get(`${BACKEND_URL}/api/astrology/transit`, {
-            headers,
-            withCredentials: true,
-          });
+          const res = await apiClient.get('/api/astrology/transit');
           set({ transitData: res.data, loading: false });
         } catch (err: any) {
           console.error('Error fetching transit data', err);
@@ -290,22 +250,8 @@ export const useAstroStore = create<AstroState>()(
         if (!force && get().myTransitData) return;
 
         set({ loading: true, error: null });
-        const session = await authClient.getSession();
-        if (!session?.data?.session?.token) {
-          set({ loading: false, error: 'Not authenticated' });
-          return;
-        }
         try {
-          const headers = {
-            Authorization: `Bearer ${session.data.session.token}`,
-          };
-          const res = await axios.get(
-            `${BACKEND_URL}/api/astrology/my-transit`,
-            {
-              headers,
-              withCredentials: true,
-            },
-          );
+          const res = await apiClient.get('/api/astrology/my-transit');
           set({ myTransitData: res.data, loading: false });
         } catch (err: any) {
           console.error('Error fetching my transit data', err);
@@ -321,22 +267,8 @@ export const useAstroStore = create<AstroState>()(
         if (!force && get().mahaDashas.length > 0) return;
 
         set({ loading: true, error: null });
-        const session = await authClient.getSession();
-        if (!session?.data?.session?.token) {
-          set({ loading: false, error: 'Not authenticated' });
-          return;
-        }
         try {
-          const headers = {
-            Authorization: `Bearer ${session.data.session.token}`,
-          };
-          const res = await axios.get(
-            `${BACKEND_URL}/api/astrology/maha-dashas`,
-            {
-              headers,
-              withCredentials: true,
-            },
-          );
+          const res = await apiClient.get('/api/astrology/maha-dashas');
           set({ mahaDashas: res.data, loading: false });
         } catch (err: any) {
           console.error('Error fetching Vimsottari dashas', err);
@@ -352,22 +284,8 @@ export const useAstroStore = create<AstroState>()(
         if (!force && get().yoginiDashas.length > 0) return;
 
         set({ loading: true, error: null });
-        const session = await authClient.getSession();
-        if (!session?.data?.session?.token) {
-          set({ loading: false, error: 'Not authenticated' });
-          return;
-        }
         try {
-          const headers = {
-            Authorization: `Bearer ${session.data.session.token}`,
-          };
-          const res = await axios.get(
-            `${BACKEND_URL}/api/astrology/yogini-dasha`,
-            {
-              headers,
-              withCredentials: true,
-            },
-          );
+          const res = await apiClient.get('/api/astrology/yogini-dasha');
           set({ yoginiDashas: res.data, loading: false });
         } catch (err: any) {
           console.error('Error fetching Yogini dashas', err);
@@ -376,6 +294,30 @@ export const useAstroStore = create<AstroState>()(
             loading: false,
           });
         }
+      },
+
+      fetchAiPersona: async () => {
+        if (get().loadingAiPersona) return; // Use specific loading state
+        set({ loadingAiPersona: true, error: null }); // Use specific loading state
+        try {
+          const res = await apiClient.get('/api/ai/persona');
+          const persona = res.data.persona;
+          set((state) => ({
+            user: state.user ? { ...state.user, aiPersona: persona } : null,
+            loadingAiPersona: false, // Use specific loading state
+          }));
+        } catch (err: any) {
+          console.error('Error fetching AI persona', err);
+          set({
+            error: err.message || 'Failed to fetch AI persona',
+            loadingAiPersona: false, // Use specific loading state
+          });
+        }
+      },
+
+      refreshData: async () => {
+        await get().fetchAstroData(true);
+        await get().fetchCoinStatus();
       },
     }),
     {

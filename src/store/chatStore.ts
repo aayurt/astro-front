@@ -1,9 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import axios from 'axios';
-import { authClient } from '../lib/auth-client';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+import apiClient from '../lib/api-client';
 
 export interface ChatMessage {
   text: string;
@@ -96,26 +93,9 @@ export const useChatStore = create<ChatState>()(
         }
 
         set({ loadingHistory: true });
-        const session = await authClient.getSession();
-        console.log(
-          'Session retrieved for conversations:',
-          !!session?.data?.session?.token,
-        );
-        if (!session?.data?.session?.token) {
-          console.log('No token found, skipping fetch');
-          set({ loadingHistory: false });
-          return;
-        }
-
         try {
-          console.log(
-            'Fetching conversations from:',
-            `${BACKEND_URL}/api/ai/conversations`,
-          );
-          const res = await axios.get(`${BACKEND_URL}/api/ai/conversations`, {
-            headers: { Authorization: `Bearer ${session.data.session.token}` },
-            withCredentials: true,
-          });
+          console.log('Fetching conversations...');
+          const res = await apiClient.get('/api/ai/conversations');
           console.log('Conversations fetched:', res.data.length);
           set({
             conversations: res.data,
@@ -159,22 +139,8 @@ export const useChatStore = create<ChatState>()(
         }
 
         set({ loading: true, activeConversationId: id });
-        const session = await authClient.getSession();
-        if (!session?.data?.session?.token) {
-          set({ loading: false });
-          return;
-        }
-
         try {
-          const res = await axios.get(
-            `${BACKEND_URL}/api/ai/conversations/${id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${session.data.session.token}`,
-              },
-              withCredentials: true,
-            },
-          );
+          const res = await apiClient.get(`/api/ai/conversations/${id}`);
 
           const chatMessages: ChatMessage[] = res.data.messages.map(
             (m: any) => ({

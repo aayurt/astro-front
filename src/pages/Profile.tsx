@@ -1,8 +1,8 @@
-import axios from 'axios';
 import { Block, BlockTitle, Button, List, ListInput, Navbar, Page } from 'konsta/react';
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '../lib/auth-client';
+import apiClient from '../lib/api-client';
 import { useAstroStore } from '../store/astroStore';
 import { useChatStore } from '../store/chatStore';
 import { debounce } from '../utils/debounce';
@@ -37,12 +37,6 @@ export default function ProfilePage() {
     }
   }, [hydrated, storeUser]);
 
-  useEffect(() => {
-    if (hydrated && !storeUser) {
-      navigate('/login');
-    }
-  }, [hydrated, storeUser, navigate]);
-
   const debouncedSearch = useMemo(
     () =>
       debounce(async (query: string) => {
@@ -51,16 +45,10 @@ export default function ProfilePage() {
           return;
         }
         setSearching(true);
-        const session = await authClient.getSession();
         try {
-          const res = await axios.post(
-            `${BACKEND_URL}/api/location/search`,
-            { location: query },
-            {
-              headers: { Authorization: `Bearer ${session.data?.session.token}` },
-              withCredentials: true,
-            },
-          );
+          const res = await apiClient.post('/api/location/search', {
+            location: query,
+          });
           setSearchResults(res.data);
         } catch (err) {
           console.error('Search error', err);
@@ -86,16 +74,11 @@ export default function ProfilePage() {
     setError('');
 
     setFetchingTimezone(true);
-    const session = await authClient.getSession();
     try {
-      const tzRes = await axios.post(
-        `${BACKEND_URL}/api/location/timezone`,
-        { latitude: res.latitude, longitude: res.longitude },
-        {
-          headers: { Authorization: `Bearer ${session.data?.session.token}` },
-          withCredentials: true,
-        },
-      );
+      const tzRes = await apiClient.post('/api/location/timezone', {
+        latitude: res.latitude,
+        longitude: res.longitude,
+      });
       setTimezone(tzRes.data.timezone_offset.toString());
     } catch (err) {
       console.error('Timezone error', err);
@@ -107,16 +90,15 @@ export default function ProfilePage() {
   const handleUpdate = async () => {
     setLoading(true);
     setError('');
-    const session = await authClient.getSession();
     try {
-      await axios.post(
-        `${BACKEND_URL}/api/user/profile`,
-        { birthDate, birthTime, location, latitude: parseFloat(latitude), longitude: parseFloat(longitude), timezone },
-        {
-          headers: { Authorization: `Bearer ${session.data?.session.token}` },
-          withCredentials: true,
-        }
-      );
+      await apiClient.post('/api/user/profile', {
+        birthDate,
+        birthTime,
+        location,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        timezone,
+      });
       // Update local store user
       updateUser({ birthDate, birthTime, location, latitude: parseFloat(latitude), longitude: parseFloat(longitude), timezone });
       // Refresh session and user data
@@ -197,7 +179,7 @@ export default function ProfilePage() {
       </List>
 
       <Block>
-        <Button large onClick={handleUpdate} disabled={loading}>
+        <Button large onClick={handleUpdate} disabled={fetchingTimezone || loading}>
           {loading ? 'Updating...' : 'Update & Recalculate'}
         </Button>
       </Block>

@@ -10,6 +10,7 @@ export interface User {
   timezone?: string;
   coins?: number;
   lastClaimedAt?: string;
+  aiPersona?: string;
 }
 
 export interface LocationSearchResult {

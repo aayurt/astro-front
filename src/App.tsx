@@ -15,6 +15,8 @@ import ProfilePage from './pages/Profile';
 import InvalidateCache from './pages/InvalidateCache';
 import MainLayout from './components/MainLayout';
 import { Page, Navbar, Block, Button } from 'konsta/react';
+import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
 
 function LandingPage() {
   return (
@@ -41,20 +43,26 @@ function App() {
   return (
     <Router basename={basename}>
       <Routes>
-        <Route path='/' element={<LandingPage />} />
-        <Route path='/login' element={<LoginPage />} />
-        <Route path='/signup' element={<SignupPage />} />
-        <Route path='/onboarding' element={<OnboardingPage />} />
+        {/* Public Routes - Only accessible when NOT logged in */}
+        <Route element={<PublicRoute />}>
+          <Route path='/' element={<LandingPage />} />
+          <Route path='/login' element={<LoginPage />} />
+          <Route path='/signup' element={<SignupPage />} />
+        </Route>
+
         <Route path='/invalidate-cache' element={<InvalidateCache />} />
 
-        {/* Protected routes with Bottom Nav */}
-        <Route element={<MainLayout />}>
-          <Route path='/dashboard' element={<DashboardPage />} />
-          <Route path='/ai' element={<AIPage />} />
-          <Route path='/ai/:id' element={<AIPage />} />
-          <Route path='/birth-chart' element={<BirthChartPage />} />
-          <Route path='/transit' element={<TransitPage />} />
-          <Route path='/profile' element={<ProfilePage />} />
+        {/* Protected Routes - Only accessible when logged in */}
+        <Route element={<ProtectedRoute />}>
+          <Route path='/onboarding' element={<OnboardingPage />} />
+          <Route element={<MainLayout />}>
+            <Route path='/dashboard' element={<DashboardPage />} />
+            <Route path='/ai' element={<AIPage />} />
+            <Route path='/ai/:id' element={<AIPage />} />
+            <Route path='/birth-chart' element={<BirthChartPage />} />
+            <Route path='/transit' element={<TransitPage />} />
+            <Route path='/profile' element={<ProfilePage />} />
+          </Route>
         </Route>
 
         <Route path='*' element={<Navigate to='/' />} />

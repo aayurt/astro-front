@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Page, Navbar, List, ListInput, Button, Block } from 'konsta/react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../lib/api-client';
 import { authClient } from '../lib/auth-client';
 import { useAstroStore } from '../store/astroStore';
 import { useChatStore } from '../store/chatStore';
@@ -37,16 +37,10 @@ export default function OnboardingPage() {
           return;
         }
         setSearching(true);
-        const session = await authClient.getSession();
         try {
-          const res = await axios.post(
-            `${BACKEND_URL}/api/location/search`,
-            { location: query },
-            {
-              headers: { Authorization: `Bearer ${session.data?.session.token}` },
-              withCredentials: true,
-            },
-          );
+          const res = await apiClient.post('/api/location/search', {
+            location: query,
+          });
           setSearchResults(res.data);
         } catch (err) {
           console.error('Search error', err);
@@ -99,16 +93,11 @@ export default function OnboardingPage() {
 
     // Fetch timezone for the selected location
     setFetchingTimezone(true);
-    const session = await authClient.getSession();
     try {
-      const tzRes = await axios.post(
-        `${BACKEND_URL}/api/location/timezone`,
-        { latitude: res.latitude, longitude: res.longitude },
-        {
-          headers: { Authorization: `Bearer ${session.data?.session.token}` },
-          withCredentials: true,
-        },
-      );
+      const tzRes = await apiClient.post('/api/location/timezone', {
+        latitude: res.latitude,
+        longitude: res.longitude,
+      });
       setTimezone(tzRes.data.timezone_offset.toString());
       setTimezoneName(tzRes.data.timezone_id || '');
     } catch (err) {
@@ -127,31 +116,15 @@ export default function OnboardingPage() {
     setLoading(true);
     setError('');
 
-    const session = await authClient.getSession();
-    if (!session || !session.data) {
-      setError('You must be logged in');
-      navigate('/login');
-      return;
-    }
-
     try {
-      await axios.post(
-        `${BACKEND_URL}/api/user/profile`,
-        {
-          birthDate,
-          birthTime,
-          location,
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude),
-          timezone,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${session.data.session.token}`,
-          },
-          withCredentials: true,
-        },
-      );
+      await apiClient.post('/api/user/profile', {
+        birthDate,
+        birthTime,
+        location,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        timezone,
+      });
       // Update local store user
       updateUser({
         birthDate,
@@ -254,7 +227,7 @@ export default function OnboardingPage() {
           />
         </List>
         <Block>
-          <Button large onClick={handleSave} disabled={loading}>
+          <Button large onClick={handleSave} disabled={fetchingTimezone || loading}>
             {loading ? 'Saving...' : 'Save and View Charts'}
           </Button>
         </Block>

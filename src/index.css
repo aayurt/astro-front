@@ -3,3 +3,21 @@
 @import 'konsta/react/theme.css';
 
 @import 'tailwindcss';
+
+@layer components {
+  .persona-content h2 {
+    @apply text-lg font-bold mt-6 mb-2 text-indigo-700;
+  }
+  .persona-content p {
+    @apply mb-4 leading-relaxed;
+  }
+  .persona-content table {
+    @apply w-full border-collapse my-6 text-xs;
+  }
+  .persona-content th, .persona-content td {
+    @apply border border-gray-200 p-2 text-left;
+  }
+  .persona-content th {
+    @apply bg-gray-50 font-bold;
+  }
+}
