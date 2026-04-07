@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const {
     user,
     planets,
+    aiPersona,
     coins,
     canClaim,
     loading,
@@ -144,7 +145,7 @@ export default function DashboardPage() {
                 <div className='p-2'>
                   <Button
                     onClick={async () => {
-                      if (!user?.aiPersona) {
+                      if (!aiPersona) {
                         await fetchAiPersona();
                       }
                       setShowPersonaModal(true);
@@ -152,7 +153,7 @@ export default function DashboardPage() {
                   >
                     {loadingAiPersona
                       ? 'Analyzing...'
-                      : user?.aiPersona
+                      : aiPersona
                         ? 'Show My Persona'
                         : 'Analyze My Persona'}
                   </Button>
@@ -211,7 +212,7 @@ export default function DashboardPage() {
             }
           />
           <Block className='text-sm text-gray-700 leading-relaxed persona-content'>
-            <div dangerouslySetInnerHTML={{ __html: user?.aiPersona || '' }} />
+            <div dangerouslySetInnerHTML={{ __html: aiPersona || '' }} />
           </Block>
         </Page>
       </Popup>

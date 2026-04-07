@@ -13,6 +13,7 @@ interface AstroState {
   yoginiDashas: YoginiDasha[];
   transitData: ChartData | null;
   myTransitData: ChartData | null;
+  aiPersona: string | null; // Moved from User to top-level
   coins: number;
   canClaim: boolean;
   loading: boolean;
@@ -44,6 +45,7 @@ export const useAstroStore = create<AstroState>()(
       yoginiDashas: [],
       transitData: null,
       myTransitData: null,
+      aiPersona: null,
       coins: 0,
       canClaim: false,
       loading: false,
@@ -302,10 +304,10 @@ export const useAstroStore = create<AstroState>()(
         try {
           const res = await apiClient.get('/api/ai/persona');
           const persona = res.data.persona;
-          set((state) => ({
-            user: state.user ? { ...state.user, aiPersona: persona } : null,
-            loadingAiPersona: false, // Use specific loading state
-          }));
+          set({
+            aiPersona: persona,
+            loadingAiPersona: false,
+          });
         } catch (err: any) {
           console.error('Error fetching AI persona', err);
           set({
@@ -335,6 +337,7 @@ export const useAstroStore = create<AstroState>()(
         yoginiDashas: state.yoginiDashas,
         transitData: state.transitData,
         myTransitData: state.myTransitData,
+        aiPersona: state.aiPersona,
         coins: state.coins,
         canClaim: state.canClaim,
       }),
