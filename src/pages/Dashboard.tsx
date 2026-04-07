@@ -10,7 +10,6 @@ import {
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlanetaryHighlights } from '../components/highlights';
-import { authClient } from '../lib/auth-client';
 
 import { RefreshCw, X } from 'lucide-react';
 import { LoadingPlanet } from '../components/LoadingPlanet';
@@ -46,6 +45,10 @@ export default function DashboardPage() {
     }
     fetchAstroData();
   }, [fetchAstroData, user, navigate]);
+  React.useEffect(() => {
+    fetchAiPersona();
+    fetchCoinStatus();
+  }, [fetchCoinStatus]);
 
   const handleClaim = async () => {
     if (!canClaim) return;
@@ -150,6 +153,7 @@ export default function DashboardPage() {
                       }
                       setShowPersonaModal(true);
                     }}
+                    disabled={loadingAiPersona}
                   >
                     {loadingAiPersona
                       ? 'Analyzing...'

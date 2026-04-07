@@ -31,13 +31,28 @@ import { ChatMessage, useChatStore } from '../store/chatStore';
 const formatMessageText = (text: string) => {
   if (!text) return text;
 
-  // If text contains HTML tags (simple detection), use dangerouslySetInnerHTML
+  // Sanitize HTML — only allow safe formatting tags the AI uses for tables/lists
+  const sanitizeHtml = (html: string) => {
+    const tags = ['strong', 'em', 'b', 'i', 'u', 'br', 'p', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div'];
+    return html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/\son\w+\s*=/gi, ' data-sanitized=')
+      .replace(/<([^/>\s]+)\b[^>]*>/gi, (match, tag) => {
+        if (!tags.includes(tag.toLowerCase())) {
+          return '';
+        }
+        // Strip event handlers and javascript: from attributes
+        return match.replace(/\s(?:on\w+|href)\s*=\s*(?:"[^"]*"|'[^']*'|javascript:[^\s>]*[^>]*)?/gi, ' ');
+      });
+  };
+
+  // If text contains HTML tags (simple detection), use sanitized dangerouslySetInnerHTML
   const isHtml = /<[a-z][\s\S]*>/i.test(text);
   if (isHtml) {
     return (
       <div
         className='prose prose-sm max-w-none text-inherit dark:prose-invert [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-gray-200 [&_th]:border [&_th]:border-gray-200 [&_th]:p-1 [&_td]:border [&_td]:border-gray-200 [&_td]:p-1'
-        dangerouslySetInnerHTML={{ __html: text }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(text) }}
       />
     );
   }
@@ -396,7 +411,6 @@ export default function AIPage() {
               )}
               {messages.map((msg, index) => {
                 return (
-                  <>
                     <Message
                       key={index}
                       type={msg.type}
@@ -411,7 +425,6 @@ export default function AIPage() {
                       }
                       className={`mb-4 text-sm py-2 ${/<[a-z][\s\S]*>/i.test(msg.text) ? '' : 'whitespace-pre-wrap'}`}
                     />
-                  </>
                 );
               })}
               {loading && (

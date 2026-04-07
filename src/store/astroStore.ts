@@ -142,19 +142,30 @@ export const useAstroStore = create<AstroState>()(
         }
 
         try {
-          const [
-            planetsRes,
-            d9Res,
-            mahaDashasRes,
-            yoginiDashasRes,
-            transitRes,
-          ] = await Promise.all([
+          const results = await Promise.allSettled([
             apiClient.get('/api/astrology/planets-extended'),
             apiClient.get('/api/astrology/d9-chart'),
             apiClient.get('/api/astrology/maha-dashas'),
             apiClient.get('/api/astrology/yogini-dasha'),
             apiClient.get('/api/astrology/transit'),
           ]);
+
+          const errors: string[] = [];
+          const planetsRes = results[0].status === 'fulfilled' ? results[0].value : null;
+          const d9Res = results[1].status === 'fulfilled' ? results[1].value : null;
+          const mahaDashasRes = results[2].status === 'fulfilled' ? results[2].value : null;
+          const yoginiDashasRes = results[3].status === 'fulfilled' ? results[3].value : null;
+          const transitRes = results[4].status === 'fulfilled' ? results[4].value : null;
+
+          if (!planetsRes) {
+            results.forEach((r, i) => {
+              if (r.status === 'rejected') {
+                errors.push(`Request ${i + 1}: ${r.reason?.message || r.reason || 'unknown'}`);
+              }
+            });
+            set({ loading: false, error: errors.join('; ') || 'Failed to fetch planets data' });
+            return;
+          }
 
           const natal = planetsRes.data;
 
@@ -213,13 +224,16 @@ export const useAstroStore = create<AstroState>()(
           set({
             user: userData || get().user,
             planets: natal,
-            d9Chart: d9Res.data,
+            d9Chart: d9Res?.data ?? get().d9Chart,
             specialPlanets,
-            mahaDashas: mahaDashasRes ? mahaDashasRes.data : [],
-            yoginiDashas: yoginiDashasRes ? yoginiDashasRes.data : [],
-            transitData: transitRes.data,
+            mahaDashas: mahaDashasRes?.data ?? get().mahaDashas,
+            yoginiDashas: yoginiDashasRes?.data ?? get().yoginiDashas,
+            transitData: transitRes?.data ?? get().transitData,
             loading: false,
           });
+          if (errors.length > 0) {
+            console.warn('Partial fetch — some requests failed:', errors);
+          }
           get().fetchCoinStatus(); // Update coin status after fetching astro data
         } catch (err: any) {
           console.error('Error fetching astro data', err);

@@ -29,14 +29,7 @@ const ProtectedRoute = () => {
         fetchConversations();
       }
     }
-  }, [
-    session,
-    astroHydrated,
-    chatHydrated,
-    fetchAstroData,
-    fetchConversations,
-    updateUser,
-  ]);
+  }, [session, astroHydrated, chatHydrated, fetchAstroData, fetchConversations, updateUser]);
 
   if (isPending) {
     return <LoadingPlanet />;

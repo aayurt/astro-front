@@ -51,6 +51,7 @@ function App() {
 
         <Route path='/invalidate-cache' element={<InvalidateCache />} />
         <Route path='/reset' element={<InvalidateCache />} />
+        <Route path='/landing' element={<LandingPage />} />
 
         {/* Protected Routes - Only accessible when logged in */}
         <Route element={<ProtectedRoute />}>
@@ -65,7 +66,7 @@ function App() {
           </Route>
         </Route>
 
-        <Route path='*' element={<Navigate to='/login' />} />
+        <Route path='*' element={<Navigate to='/landing' />} />
       </Routes>
     </Router>
   );
