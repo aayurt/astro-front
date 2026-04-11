@@ -13,13 +13,14 @@ interface AstroState {
   yoginiDashas: YoginiDasha[];
   transitData: ChartData | null;
   myTransitData: ChartData | null;
-  aiPersona: string | null; // Moved from User to top-level
+  aiPersona: string | null;
   coins: number;
   canClaim: boolean;
   loading: boolean;
-  loadingAiPersona: boolean; // New dedicated loading state for AI Persona
+  loadingAiPersona: boolean;
   hydrated: boolean;
   error: string | null;
+  lastTransitFetch: number | null;
   fetchAstroData: (force?: boolean, token?: string) => Promise<void>;
   fetchCoinStatus: () => Promise<void>;
   claimDailyCoins: () => Promise<void>;
@@ -69,9 +70,16 @@ export const useAstroStore = create<AstroState>()(
           specialPlanets: null,
           mahaDashas: [],
           yoginiDashas: [],
-          transitData: null,
-          myTransitData: null,
-          error: null,
+transitData: null,
+      myTransitData: null,
+      aiPersona: null,
+      coins: 0,
+      canClaim: false,
+      loading: false,
+      loadingAiPersona: false,
+      hydrated: false,
+      error: null,
+      lastTransitFetch: null,
         });
       },
 
@@ -112,6 +120,7 @@ export const useAstroStore = create<AstroState>()(
         }
 
         // If not forcing and we already have valid data, don't refetch (Offline-first)
+        // But we still need to check if transit data needs refreshing (it's time-sensitive)
         if (
           !force &&
           get().planets &&
@@ -119,6 +128,15 @@ export const useAstroStore = create<AstroState>()(
           get().d9Chart
         ) {
           console.log('Using persisted astro data');
+          // Check if transit data is stale (older than 1 hour) and refresh if needed
+          const lastTransitFetch = get().lastTransitFetch;
+          const now = Date.now();
+          const oneHour = 60 * 60 * 1000;
+          
+          if (!lastTransitFetch || now - lastTransitFetch > oneHour) {
+            console.log('Refreshing transit data (stale)');
+            get().fetchTransitData(true);
+          }
           // Refresh coin status in background without setting full loading state
           get().fetchCoinStatus();
           return;
@@ -246,12 +264,20 @@ export const useAstroStore = create<AstroState>()(
 
       fetchTransitData: async (force = false) => {
         if (get().loading) return;
-        if (!force && get().transitData) return;
+        if (!force && get().transitData && get().lastTransitFetch) {
+          // Check if data is fresh (within 1 hour)
+          const now = Date.now();
+          const oneHour = 60 * 60 * 1000;
+          if (now - get().lastTransitFetch! < oneHour) {
+            console.log('Transit data is still fresh, using cached');
+            return;
+          }
+        }
 
         set({ loading: true, error: null });
         try {
           const res = await apiClient.get('/api/astrology/transit');
-          set({ transitData: res.data, loading: false });
+          set({ transitData: res.data, loading: false, lastTransitFetch: Date.now() });
         } catch (err: any) {
           console.error('Error fetching transit data', err);
           set({
@@ -263,12 +289,19 @@ export const useAstroStore = create<AstroState>()(
 
       fetchMyTransitData: async (force = false) => {
         if (get().loading) return;
-        if (!force && get().myTransitData) return;
+        // myTransitData should always be fresh when fetched from server
+        if (!force && get().myTransitData && get().lastTransitFetch) {
+          const now = Date.now();
+          const oneHour = 60 * 60 * 1000;
+          if (now - get().lastTransitFetch! < oneHour) {
+            return;
+          }
+        }
 
         set({ loading: true, error: null });
         try {
           const res = await apiClient.get('/api/astrology/my-transit');
-          set({ myTransitData: res.data, loading: false });
+          set({ myTransitData: res.data, loading: false, lastTransitFetch: Date.now() });
         } catch (err: any) {
           console.error('Error fetching my transit data', err);
           set({
@@ -354,6 +387,7 @@ export const useAstroStore = create<AstroState>()(
         aiPersona: state.aiPersona,
         coins: state.coins,
         canClaim: state.canClaim,
+        lastTransitFetch: state.lastTransitFetch,
       }),
     },
   ),

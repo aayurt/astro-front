@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Block, BlockTitle, Card, Navbar, Page, Preloader } from 'konsta/react';
 import VedicChart from '../components/VedicChart';
 import { useAstroStore } from '../store/astroStore';
@@ -6,52 +6,102 @@ import { ChartData } from '../types/api';
 import { ZODIAC_SIGNS } from '../types/constants';
 import { LoadingPlanet } from '../components/LoadingPlanet';
 
+const SIGN_LORDS: Record<number, string> = {
+  1: 'Sun',
+  2: 'Venus', 
+  3: 'Mercury',
+  4: 'Moon',
+  5: 'Sun',
+  6: 'Mercury',
+  7: 'Venus',
+  8: 'Saturn',
+  9: 'Jupiter',
+  10: 'Saturn',
+  11: 'Jupiter',
+  12: 'Mars',
+};
+
+const LORD_TO_SIGN: Record<string, number> = {
+  'Sun': 1,
+  'Moon': 4,
+  'Mars': 12,
+  'Mercury': 3,
+  'Jupiter': 9,
+  'Venus': 2,
+  'Saturn': 10,
+};
+
 export default function TransitPage() {
-  const { planets: natalPlanets, transitData, loading, error, fetchAstroData, hydrated } = useAstroStore();
+  const [localLoading, setLocalLoading] = useState(false);
+  const { 
+    planets: natalPlanets, 
+    transitData, 
+    loading, 
+    error, 
+    fetchAstroData, 
+    fetchTransitData,
+    hydrated 
+  } = useAstroStore();
 
   useEffect(() => {
-    if (hydrated) {
-      fetchAstroData();
+    if (hydrated && !transitData) {
+      fetchTransitData();
     }
-  }, [hydrated]);
+  }, [hydrated, transitData, fetchTransitData]);
 
-  const myTransitData = useMemo(() => {
+  const myTransitData = useMemo((): ChartData | null => {
     if (!natalPlanets || !transitData) return null;
 
     const result: Record<string, any> = {};
-    const targetAscHouseNumber = natalPlanets.Ascendant.current_sign;
-    const targetAscZodiac = natalPlanets.Ascendant.zodiac_sign_lord;
-    const currentTransitAscHouseNumber = (Object.entries(transitData).find(([key]) => key === targetAscZodiac)?.[1] as any)?.house_number || 1;
-    const shift = 12 - currentTransitAscHouseNumber;
+    
+    const targetAscSign = natalPlanets.Ascendant?.current_sign;
+    const targetAscLord = natalPlanets.Ascendant?.zodiac_sign_lord;
+    
+    if (!targetAscSign || !targetAscLord) return null;
+    
+    const transitAsc = transitData.Ascendant;
+    if (!transitAsc) return null;
+    
+    const transitAscLord = transitAsc.zodiac_sign_lord;
+    
+    const natalAscLordSign = LORD_TO_SIGN[targetAscLord] || 1;
+    const globalAscLordSign = LORD_TO_SIGN[transitAscLord] || 1;
+    
+    const houseShift = ((natalAscLordSign - globalAscLordSign + 12) % 12);
 
     for (const [planet, info] of Object.entries(transitData) as [string, any][]) {
-      const houseNumber = info.house_number;
-      const newHouseNumber = ((houseNumber + shift) % 12) || 12;
-
+      if (planet === 'Ascendant') {
+        result[planet] = {
+          ...info,
+          current_sign: targetAscSign,
+          house_number: 1,
+        };
+        continue;
+      }
+      
+      const oldHouse = info.house_number || 1;
+      const newHouse = (((oldHouse - 1 + houseShift) % 12) || 12);
+      
       result[planet] = {
         ...info,
-        original_house_number: houseNumber,
-        house_number: newHouseNumber,
+        original_house_number: oldHouse,
+        house_number: newHouse,
       };
     }
-
-    result.Ascendant = {
-      ...result.Ascendant,
-      current_sign: targetAscHouseNumber,
-    };
 
     return result as ChartData;
   }, [natalPlanets, transitData]);
 
-  const planets = transitData;
-  const myTransitPlanets = myTransitData;
+  const isLoading = loading || localLoading;
+  const globalTransit = transitData;
+  const personalTransit = myTransitData;
 
 
   return (
     <Page>
       <Navbar title="Planet Transits" />
 
-      {loading ? (
+      {isLoading ? (
         <LoadingPlanet />
       ) : error ? (
         <Block strong className="text-center text-red-500">
@@ -64,15 +114,15 @@ export default function TransitPage() {
           </BlockTitle>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4">
-            {transitData && (
+            {globalTransit && (
               <div>
                 <BlockTitle className="!m-0 !mb-2 text-sm font-bold">Global Transit (Today)</BlockTitle>
                 <Card className="!m-0 mb-4">
-                  <VedicChart data={(transitData)} title='Global D1 Chart' />
+                  <VedicChart data={globalTransit} title='Global D1 Chart' />
                   <Card className='border border-gray-950/5 p-0 rounded-xl bg-[oklch(0.98_0_0)]'>
                     <div className='pb-2 font-bold'>Planet Positions</div>
 
-                    {planets ? (
+                    {globalTransit ? (
                       <div className='overflow-x-auto'>
                         <table className='w-full text-sm text-left border-gray-950/5 p-0 rounded-xl'>
                           <thead>
@@ -94,11 +144,10 @@ export default function TransitPage() {
                           </thead>
                           <tbody className='bg-white  '>
                             {(() => {
-                              const sun = planets?.Sun;
+                              const sun = globalTransit?.Sun;
                               const sunDegree = sun?.fullDegree || 0;
-                              return Object.entries(planets).map(([key, planet]) => {
+                              return Object.entries(globalTransit).map(([key, planet]) => {
                                 const zodiacSigns = ZODIAC_SIGNS;
-                                // Combustion calculation
                                 const thresholds: Record<string, number> = {
                                   Moon: 12,
                                   Mars: 17,
@@ -170,15 +219,15 @@ export default function TransitPage() {
               </div>
             )}
 
-            {myTransitData && (
+            {personalTransit && (
               <div>
                 <BlockTitle className="!m-0 !mb-2 text-sm font-bold">My Current Transit</BlockTitle>
                 <Card className="!m-0 mb-4">
-                  <VedicChart data={myTransitData} title='My D1 Chart' />
+                  <VedicChart data={personalTransit} title='My D1 Chart' />
                   <Card className='border border-gray-950/5 p-0 rounded-xl bg-[oklch(0.98_0_0)]'>
                     <div className='pb-2 font-bold'>Planet Positions</div>
 
-                    {myTransitPlanets ? (
+                    {personalTransit ? (
                       <div className='overflow-x-auto'>
                         <table className='w-full text-sm text-left border-gray-950/5 p-0 rounded-xl'>
                           <thead>
@@ -200,11 +249,10 @@ export default function TransitPage() {
                           </thead>
                           <tbody className='bg-white  '>
                             {(() => {
-                              const sun = myTransitPlanets?.Sun;
+                              const sun = personalTransit?.Sun;
                               const sunDegree = sun?.fullDegree || 0;
-                              return Object.entries(myTransitPlanets).map(([key, planet]) => {
+                              return Object.entries(personalTransit).map(([key, planet]) => {
                                 const zodiacSigns = ZODIAC_SIGNS;
-                                // Combustion calculation
                                 const thresholds: Record<string, number> = {
                                   Moon: 12,
                                   Mars: 17,

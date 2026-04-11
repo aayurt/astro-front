@@ -1,9 +1,9 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import BottomNav from './BottomNav';
-import { Button, Block } from 'konsta/react';
+import { Block, Button } from 'konsta/react';
 import { Download, X } from 'lucide-react';
+import { Outlet } from 'react-router-dom';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import BottomNav from './BottomNav';
+import { PageTransition } from './PageTransition';
 
 const MainLayout = () => {
   const { isInstallable, installPWA, dismissPWA } = usePWAInstall();
@@ -43,7 +43,9 @@ const MainLayout = () => {
             </Block>
           </div>
         )}
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </div>
       <div className='h-20'>
         <BottomNav />

@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { PlanetaryHighlights } from '../components/highlights';
 
 import { RefreshCw, X } from 'lucide-react';
-import { LoadingPlanet } from '../components/LoadingPlanet';
+import { LoadingSpinner, PageLoader } from '../components/LoadingSpinner';
 import { PlanetsBirthChartSummary } from '../components/PlanetsBirthChartSummary';
 import { VimsottariDasha } from '../components/VimsottariDasha';
 import { YoginiDasha } from '../components/YoginiDasha';
@@ -59,7 +59,7 @@ export default function DashboardPage() {
     return (
       <Page>
         <Navbar title='Dashboard' />
-        <LoadingPlanet />
+        <PageLoader message="Loading your chart..." />
       </Page>
     );
   }

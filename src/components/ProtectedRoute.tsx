@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { authClient } from '../lib/auth-client';
 import { LoadingPlanet } from './LoadingPlanet';
+import { PageTransition } from './PageTransition';
 import { useAstroStore } from '../store/astroStore';
 import { useChatStore } from '../store/chatStore';
 
@@ -39,7 +40,11 @@ const ProtectedRoute = () => {
     return <Navigate to='/login' replace />;
   }
 
-  return <Outlet />;
+  return (
+    <PageTransition>
+      <Outlet />
+    </PageTransition>
+  );
 };
 
 export default ProtectedRoute;
