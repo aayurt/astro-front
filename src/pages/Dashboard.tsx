@@ -64,12 +64,28 @@ export default function DashboardPage() {
     );
   }
 
+  if (error && error.includes('400')) {
+    return (
+      <Page>
+        <Navbar title='Dashboard' />
+        <BlockTitle className='text-center mt-8'>
+          Unable to load some chart calculations. Your birth data may need updating.
+        </BlockTitle>
+        <div className='flex justify-center mt-4'>
+          <Button onClick={() => navigate('/onboarding')}>
+            Update Birth Details
+          </Button>
+        </div>
+      </Page>
+    );
+  }
+
   if (error) {
     return (
       <Page>
         <Navbar title='Dashboard' />
         <BlockTitle className='text-center mt-8 text-red-500'>
-          Error: {error}
+          {error}
         </BlockTitle>
         <div className='flex justify-center mt-4'>
           <Button onClick={() => navigate('/onboarding')}>

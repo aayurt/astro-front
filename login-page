@@ -1,0 +1,29 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - img [ref=e8]
+    - heading "Welcome Back" [level=2] [ref=e10]
+    - paragraph [ref=e11]: Align with your stars and continue your journey
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic:
+            - img
+          - list [ref=e17]:
+            - listitem [ref=e18]:
+              - textbox "Email address" [ref=e22]
+        - generic [ref=e23]:
+          - generic:
+            - img
+          - list [ref=e25]:
+            - listitem [ref=e26]:
+              - textbox "Password" [ref=e30]
+        - button "Login to Dashboard" [ref=e32] [cursor=pointer]:
+          - generic [ref=e33]:
+            - text: Login to Dashboard
+            - img [ref=e34]
+      - paragraph [ref=e37]:
+        - text: New to the cosmos?
+        - link "Create an account" [ref=e38] [cursor=pointer]:
+          - /url: /signup
+    - paragraph [ref=e39]: ✨ Trusted by Astrologers Everywhere ✨

@@ -64,7 +64,13 @@ export default function SignupPage() {
               </div>
             )}
 
-            <div className="space-y-6">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSignup();
+              }}
+              className="space-y-6"
+            >
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                   <UserIcon className="h-5 w-5 text-slate-400" />
@@ -72,6 +78,7 @@ export default function SignupPage() {
                 <List strongIos insetIos className="m-0! p-0!">
                   <ListInput
                     type="text"
+                    name="name"
                     placeholder="Full Name"
                     value={name}
                     onInput={(e) => setName(e.target.value)}
@@ -87,6 +94,7 @@ export default function SignupPage() {
                 <List strongIos insetIos className="m-0! p-0!">
                   <ListInput
                     type="email"
+                    name="email"
                     placeholder="Email address"
                     value={email}
                     onInput={(e) => setEmail(e.target.value)}
@@ -102,6 +110,7 @@ export default function SignupPage() {
                 <List strongIos insetIos className="m-0! p-0!">
                   <ListInput
                     type="password"
+                    name="password"
                     placeholder="Password"
                     value={password}
                     onInput={(e) => setPassword(e.target.value)}
@@ -111,10 +120,10 @@ export default function SignupPage() {
               </div>
 
               <div className="pt-2">
-                <Button 
-                  large 
+                <Button
+                  type="submit"
+                  large
                   rounded
-                  onClick={handleSignup} 
                   disabled={loading}
                   className="bg-indigo-600 hover:bg-indigo-700 h-12 shadow-md shadow-indigo-500/20 transition-all active:scale-[0.98]"
                 >
@@ -124,7 +133,7 @@ export default function SignupPage() {
                   </span>
                 </Button>
               </div>
-            </div>
+            </form>
 
             <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
               <p className="text-sm text-slate-600 dark:text-slate-400">

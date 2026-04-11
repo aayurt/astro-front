@@ -28,6 +28,26 @@ import { LoadingPlanet } from '../components/LoadingPlanet';
 import apiClient from '../lib/api-client';
 import { ChatMessage, useChatStore } from '../store/chatStore';
 
+const formatMessageTime = (timeStr: string): string => {
+  const [hours, minutes] = timeStr.replace(/[APM\s]/g, '').split(':').map(Number);
+  const isPM = timeStr.toLowerCase().includes('pm');
+  const totalMinutes = hours * 60 + minutes + (isPM && hours !== 12 ? 12 * 60 : 0);
+  const now = new Date();
+  const msgDate = new Date(now);
+  msgDate.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
+
+  const diffMs = now.getTime() - msgDate.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return timeStr;
+};
+
 const formatMessageText = (text: string) => {
   if (!text) return text;
 
@@ -411,20 +431,20 @@ export default function AIPage() {
               )}
               {messages.map((msg, index) => {
                 return (
-                    <Message
-                      key={index}
-                      type={msg.type}
-                      name={msg.name}
-                      text={formatMessageText(msg.text)}
-                      footer={
-                        <div
-                          className={`text-xs text-gray-400 flex ${msg.type !== 'received' ? 'justify-end' : 'justify-start'} mt-1`}
-                        >
-                          {msg.time}
-                        </div>
-                      }
-                      className={`mb-4 text-sm py-2 ${/<[a-z][\s\S]*>/i.test(msg.text) ? '' : 'whitespace-pre-wrap'}`}
-                    />
+                  <Message
+                    key={index}
+                    type={msg.type}
+                    name={msg.name}
+                    text={formatMessageText(msg.text)}
+                    footer={
+                      <div
+                        className={`text-xs text-gray-400 flex ${msg.type !== 'received' ? 'justify-end' : 'justify-start'} mt-1`}
+                      >
+                        {msg.time ? formatMessageTime(msg.time) : "NaN"}
+                      </div>
+                    }
+                    className={`mb-4 text-sm py-2 ${/<[a-z][\s\S]*>/i.test(msg.text) ? '' : 'whitespace-pre-wrap'}`}
+                  />
                 );
               })}
               {loading && (
