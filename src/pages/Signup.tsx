@@ -46,6 +46,7 @@ export default function SignupPage() {
     try {
       const { error } = await authClient.signIn.social({
         provider: 'google',
+        callbackURL: import.meta.env.VITE_FRONTEND_URL + "/onboarding"
       });
       if (error) {
         setErrorMessage(error.message || 'Google sign-up failed. Please try again.');
@@ -60,7 +61,7 @@ export default function SignupPage() {
   return (
     <Page className="bg-slate-50 dark:bg-slate-950">
       {(loading || googleLoading) && <LoadingPlanet />}
-      
+
       <div className="min-h-screen flex flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-indigo-600 mb-6 shadow-lg shadow-indigo-500/30">
@@ -184,7 +185,7 @@ export default function SignupPage() {
               </p>
             </div>
           </div>
-          
+
           <p className="mt-8 text-center text-xs text-slate-400 dark:text-slate-600 uppercase tracking-widest">
             ✨ Your Cosmic Journey Awaits ✨
           </p>
