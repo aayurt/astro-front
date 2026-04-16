@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Send,
   Sparkles,
+  Volume2,
   Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -53,7 +54,7 @@ const formatMessageText = (text: string) => {
 
   // Sanitize HTML — only allow safe formatting tags the AI uses for tables/lists
   const sanitizeHtml = (html: string) => {
-    const tags = ['strong', 'em', 'b', 'i', 'u', 'br', 'p', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div'];
+    const tags = ['strong', 'em', 'b', 'i', 'u', 'br', 'p', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'div', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
     return html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
       .replace(/\son\w+\s*=/gi, ' data-sanitized=')
@@ -71,8 +72,21 @@ const formatMessageText = (text: string) => {
   if (isHtml) {
     return (
       <div
-        className='prose prose-sm max-w-none text-inherit dark:prose-invert [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-gray-200 [&_th]:border [&_th]:border-gray-200 [&_th]:p-1 [&_td]:border [&_td]:border-gray-200 [&_td]:p-1'
-        dangerouslySetInnerHTML={{ __html: sanitizeHtml(text) }}
+        className='prose prose-sm max-w-none text-inherit dark:prose-invert 
+  space-y-3
+  [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 
+  [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2
+  [&_p]:mb-3
+  [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3
+  [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3
+  [&_li]:mb-1
+  [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-gray-200 
+  [&_th]:border [&_th]:border-gray-200 [&_th]:p-1 
+  [&_td]:border [&_td]:border-gray-200 [&_td]:p-1
+  [&_b]:font-semibold
+  '
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(text) }
+        }
       />
     );
   }
@@ -148,6 +162,7 @@ export default function AIPage() {
   const [coins, setCoins] = useState<number>(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadingMessages = [
@@ -158,6 +173,28 @@ export default function AIPage() {
     'Revealing celestial insights...',
     'Creating personalized recommendations...',
   ];
+
+  const speakMessage = (text: string) => {
+    if (speechSynthesis.speaking) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.75;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    speechSynthesis.speak(utterance);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (speechSynthesis.speaking) {
+        speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let interval: any;
@@ -415,17 +452,17 @@ export default function AIPage() {
             <Messages>
               {messages.length === 0 && (
                 <div className='flex flex-col items-center justify-center h-full text-center opacity-50 px-10'>
-                  <div className='w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-4'>
-                    <Bot size={32} className='text-indigo-600' />
+                  <div className='w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-indigo-100/50'>
+                    <Bot size={36} className='text-indigo-600' />
                   </div>
-                  <h3 className='font-bold text-gray-800'>
+                  <h3 className='text-2xl font-semibold text-gray-800 tracking-wide'>
                     Vedic Astrology AI
                   </h3>
-                  <p className='text-sm mt-2'>
+                  <p className='text-base mt-3 text-gray-600'>
                     Ask me about your chart, dashas, or current transits.
                   </p>
-                  <p className='text-[10px] mt-4 italic font-medium'>
-                    (Each question uses 1 coin)
+                  <p className='text-[11px] mt-5 tracking-widest uppercase text-indigo-400 font-medium'>
+                    Each question uses 1 coin
                   </p>
                 </div>
               )}
@@ -438,12 +475,29 @@ export default function AIPage() {
                     text={formatMessageText(msg.text)}
                     footer={
                       <div
-                        className={`text-xs text-gray-400 flex ${msg.type !== 'received' ? 'justify-end' : 'justify-start'} mt-1`}
+                        className={`text-xs text-gray-400 flex items-center justify-between ${msg.type !== 'received' ? 'justify-end' : 'justify-between'} mt-1`}
                       >
-                        {msg.time ? formatMessageTime(msg.time) : "NaN"}
+                        <span>{msg.time ? formatMessageTime(msg.time) : "NaN"}</span>
+                        {msg.type === 'received' && (
+                          <button
+                            onClick={() => speakMessage(msg.text)}
+                            className="p-1 hover:bg-indigo-50 rounded transition-colors ml-2"
+                            aria-label="Speak message"
+                          >
+                            <Volume2 size={20} className={isSpeaking ? 'text-indigo-600' : 'text-gray-400'} />
+                          </button>
+                        )}
                       </div>
                     }
-                    className={`mb-4 text-sm py-2 ${/<[a-z][\s\S]*>/i.test(msg.text) ? '' : 'whitespace-pre-wrap'}`}
+                    colors={
+                      {
+                        bubbleReceivedMd: 'bg-[#f4f5f7] text-[#1f1f1f] tracking-wide',
+                        bubbleReceivedIos: 'bg-[#f4f5f7] text-[#1f1f1f] tracking-wide',
+                        bubbleSentMd: 'bg-[#e9eef6] text-[#1f1f1f] tracking-wide',
+                        bubbleSentIos: 'bg-[#e9eef6] text-[#1f1f1f] tracking-wide',
+                      }
+                    }
+                    className={`mb-4 py-2 ${/<[a-z][\s\S]*>/i.test(msg.text) ? '' : 'whitespace-pre-wrap'}`}
                   />
                 );
               })}
@@ -465,7 +519,7 @@ export default function AIPage() {
             </Messages>
           </div>
           <Messagebar
-            placeholder={coins > 0 ? 'Ask a question...' : 'Insufficient coins'}
+            placeholder={coins > 0 ? 'Ask about your chart...' : 'Insufficient coins'}
             value={messageText}
             onInput={(e: any) => {
               setMessageText(e.target.value);
