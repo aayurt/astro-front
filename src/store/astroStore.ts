@@ -30,7 +30,9 @@ interface AstroState {
   fetchYoginiDashas: (force?: boolean) => Promise<void>;
   fetchAiPersona: () => Promise<void>;
   refreshData: () => Promise<void>;
+  updateUserAndRefresh: (userData: Partial<User>) => Promise<void>;
   clearAstroData: () => void;
+  logout: () => Promise<void>;
   setHydrated: (val: boolean) => void;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -53,34 +55,61 @@ export const useAstroStore = create<AstroState>()(
       loadingAiPersona: false, // Initialize the new loading state
       hydrated: false,
       error: null,
+      lastTransitFetch: null,
 
       setHydrated: (val: boolean) => set({ hydrated: val }),
 
-      updateUser: (userData) => {
+      updateUser: (userData: Partial<User>) => {
         const currentUser = get().user;
         if (currentUser) {
           set({ user: { ...currentUser, ...userData } });
         }
       },
 
+      refreshData: async () => {
+        await get().fetchAstroData(true);
+        await get().fetchCoinStatus();
+      },
+
+      // Update user and refresh all astrology data (for after profile changes)
+      updateUserAndRefresh: async (userData: Partial<User>) => {
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, ...userData } });
+        }
+        // Force refresh all astro data with new user details
+        await get().fetchAstroData(true);
+      },
+
       clearAstroData: () => {
         set({
+          user: null,
           planets: null,
           d9Chart: null,
           specialPlanets: null,
           mahaDashas: [],
           yoginiDashas: [],
-transitData: null,
-      myTransitData: null,
-      aiPersona: null,
-      coins: 0,
-      canClaim: false,
-      loading: false,
-      loadingAiPersona: false,
-      hydrated: false,
-      error: null,
-      lastTransitFetch: null,
+          transitData: null,
+          myTransitData: null,
+          aiPersona: null,
+          coins: 0,
+          canClaim: false,
+          loading: false,
+          loadingAiPersona: false,
+          hydrated: false,
+          error: null,
+          lastTransitFetch: null,
         });
+      },
+
+      logout: async () => {
+        try {
+          await authClient.signOut();
+        } catch (e) {
+          console.error('Sign out error', e);
+        }
+        get().clearAstroData();
+        window.location.href = '/login';
       },
 
       fetchCoinStatus: async () => {
@@ -132,7 +161,7 @@ transitData: null,
           const lastTransitFetch = get().lastTransitFetch;
           const now = Date.now();
           const oneHour = 60 * 60 * 1000;
-          
+
           if (!lastTransitFetch || now - lastTransitFetch > oneHour) {
             console.log('Refreshing transit data (stale)');
             get().fetchTransitData(true);
@@ -232,10 +261,10 @@ transitData: null,
             },
             yogakaraka: ykInfo
               ? {
-                  name: ykInfo.name,
-                  houses: ykInfo.houses,
-                  details: natal[ykInfo.name],
-                }
+                name: ykInfo.name,
+                houses: ykInfo.houses,
+                details: natal[ykInfo.name],
+              }
               : null,
           };
 
@@ -362,11 +391,6 @@ transitData: null,
             loadingAiPersona: false, // Use specific loading state
           });
         }
-      },
-
-      refreshData: async () => {
-        await get().fetchAstroData(true);
-        await get().fetchCoinStatus();
       },
     }),
     {

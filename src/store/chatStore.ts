@@ -112,18 +112,23 @@ export const useChatStore = create<ChatState>()(
       },
 
       fetchMessages: async (id, force = false) => {
-        if (get().loading) return;
+        // Prevent loading if already loading this conversation
+        if (get().loading && get().activeConversationId === id) return;
 
         // Wait for hydration before checking cache
         if (!force && !get().hydrated) return;
 
-        const conversation = get().conversations.find((c) => c.id === id);
+        // If switching to a different conversation, clear messages first (handled in component)
+        // but also bypass cache for new conversations
+        const isNewConversation = get().activeConversationId !== id;
         const lastFetched = get().lastFetchedMessagesAt[id] || 0;
+        const conversation = get().conversations.find((c) => c.id === id);
 
-        // If not forced, only skip if we have messages AND the conversation hasn't been updated since last fetch
+        // If not forced and not a new conversation, check cache validity
         if (
           !force &&
-          get().activeConversationId === id &&
+          !isNewConversation &&
+          get().lastFetchedMessagesAt[id] &&
           get().messages.length > 0
         ) {
           if (

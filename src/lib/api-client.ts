@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { authClient } from './auth-client';
+import { useAstroStore } from '../store/astroStore';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -40,17 +41,8 @@ apiClient.interceptors.response.use(
       console.warn(
         'API returned 401 Unauthorized. Session may be invalid or user deleted. Logging out...',
       );
-      // Force clear session and redirect to login
-      try {
-        await authClient.signOut();
-        // Force reload or redirect to login
-        if (typeof window !== 'undefined') {
-          window.location.href =
-            (import.meta.env.VITE_BASE_PATH || '') + '/login';
-        }
-      } catch (logoutError) {
-        console.error('Logout failed after 401', logoutError);
-      }
+      // Force clear session and redirect to login - use store logout to clear localStorage
+      useAstroStore.getState().logout();
     }
     return Promise.reject(error);
   },

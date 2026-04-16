@@ -218,13 +218,17 @@ export default function AIPage() {
   useEffect(() => {
     if (hydrated) {
       if (id) {
+        if (id !== activeConversationId) {
+          setMessages([]);
+          setActiveConversationId(id);
+        }
         fetchMessages(id);
       } else {
         setActiveConversationId(null);
         setMessages([]);
       }
     }
-  }, [id, hydrated]);
+  }, [id, hydrated, activeConversationId]);
 
   const fetchCoins = async () => {
     try {

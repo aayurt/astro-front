@@ -125,8 +125,8 @@ export default function OnboardingPage() {
         longitude: parseFloat(longitude),
         timezone,
       });
-      // Update local store user
-      updateUser({
+      // Update user in store and refresh all astro data with new birth details
+      await useAstroStore.getState().updateUserAndRefresh({
         birthDate,
         birthTime,
         location,
@@ -134,7 +134,6 @@ export default function OnboardingPage() {
         longitude: parseFloat(longitude),
         timezone,
       });
-      clearAstroData();
       clearChatData();
       navigate('/dashboard');
     } catch (err: any) {

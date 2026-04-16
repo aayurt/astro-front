@@ -99,12 +99,16 @@ export default function ProfilePage() {
         longitude: parseFloat(longitude),
         timezone,
       });
-      // Update local store user
-      updateUser({ birthDate, birthTime, location, latitude: parseFloat(latitude), longitude: parseFloat(longitude), timezone });
-      // Refresh session and user data
-      await authClient.getSession();
-      // Clear astro data so it's refetched with new birth details
-      clearAstroData();
+      // Update user in store and refresh all astro data with new birth details
+      await useAstroStore.getState().updateUserAndRefresh({
+        birthDate,
+        birthTime,
+        location,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        timezone,
+      });
+      // Clear chat data as well
       clearChatData();
       navigate('/dashboard');
     } catch (err) {
@@ -115,10 +119,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = async () => {
-    await authClient.signOut();
-    clearAstroData();
-    clearChatData();
-    navigate('/login');
+    await useAstroStore.getState().logout();
   };
 
   return (
