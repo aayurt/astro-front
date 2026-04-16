@@ -8,7 +8,7 @@ import { LoadingPlanet } from '../components/LoadingPlanet';
 
 const SIGN_LORDS: Record<number, string> = {
   1: 'Sun',
-  2: 'Venus', 
+  2: 'Venus',
   3: 'Mercury',
   4: 'Moon',
   5: 'Sun',
@@ -33,14 +33,14 @@ const LORD_TO_SIGN: Record<string, number> = {
 
 export default function TransitPage() {
   const [localLoading, setLocalLoading] = useState(false);
-  const { 
-    planets: natalPlanets, 
-    transitData, 
-    loading, 
-    error, 
-    fetchAstroData, 
+  const {
+    planets: natalPlanets,
+    transitData,
+    loading,
+    error,
+    fetchAstroData,
     fetchTransitData,
-    hydrated 
+    hydrated
   } = useAstroStore();
 
   useEffect(() => {
@@ -49,52 +49,52 @@ export default function TransitPage() {
     }
   }, [hydrated, transitData, fetchTransitData]);
 
-  const myTransitData = useMemo((): ChartData | null => {
-    if (!natalPlanets || !transitData) return null;
+  // const myTransitData = useMemo((): ChartData | null => {
+  //   if (!natalPlanets || !transitData) return null;
 
-    const result: Record<string, any> = {};
-    
-    const targetAscSign = natalPlanets.Ascendant?.current_sign;
-    const targetAscLord = natalPlanets.Ascendant?.zodiac_sign_lord;
-    
-    if (!targetAscSign || !targetAscLord) return null;
-    
-    const transitAsc = transitData.Ascendant;
-    if (!transitAsc) return null;
-    
-    const transitAscLord = transitAsc.zodiac_sign_lord;
-    
-    const natalAscLordSign = LORD_TO_SIGN[targetAscLord] || 1;
-    const globalAscLordSign = LORD_TO_SIGN[transitAscLord] || 1;
-    
-    const houseShift = ((natalAscLordSign - globalAscLordSign + 12) % 12);
+  //   const result: Record<string, any> = {};
 
-    for (const [planet, info] of Object.entries(transitData) as [string, any][]) {
-      if (planet === 'Ascendant') {
-        result[planet] = {
-          ...info,
-          current_sign: targetAscSign,
-          house_number: 1,
-        };
-        continue;
-      }
-      
-      const oldHouse = info.house_number || 1;
-      const newHouse = (((oldHouse - 1 + houseShift) % 12) || 12);
-      
-      result[planet] = {
-        ...info,
-        original_house_number: oldHouse,
-        house_number: newHouse,
-      };
-    }
+  //   const targetAscSign = natalPlanets.Ascendant?.current_sign;
+  //   const targetAscLord = natalPlanets.Ascendant?.zodiac_sign_lord;
 
-    return result as ChartData;
-  }, [natalPlanets, transitData]);
+  //   if (!targetAscSign || !targetAscLord) return null;
+
+  //   const transitAsc = transitData.Ascendant;
+  //   if (!transitAsc) return null;
+
+  //   const transitAscLord = transitAsc.zodiac_sign_lord;
+
+  //   const natalAscLordSign = LORD_TO_SIGN[targetAscLord] || 1;
+  //   const globalAscLordSign = LORD_TO_SIGN[transitAscLord] || 1;
+
+  //   const houseShift = ((natalAscLordSign - globalAscLordSign + 12) % 12);
+
+  //   for (const [planet, info] of Object.entries(transitData) as [string, any][]) {
+  //     if (planet === 'Ascendant') {
+  //       result[planet] = {
+  //         ...info,
+  //         current_sign: targetAscSign,
+  //         house_number: 1,
+  //       };
+  //       continue;
+  //     }
+
+  //     const oldHouse = info.house_number || 1;
+  //     const newHouse = (((oldHouse - 1 + houseShift) % 12) || 12);
+
+  //     result[planet] = {
+  //       ...info,
+  //       original_house_number: oldHouse,
+  //       house_number: newHouse,
+  //     };
+  //   }
+
+  //   return result as ChartData;
+  // }, [natalPlanets, transitData]);
 
   const isLoading = loading || localLoading;
   const globalTransit = transitData;
-  const personalTransit = myTransitData;
+  // const personalTransit = myTransitData;
 
 
   return (
@@ -113,7 +113,7 @@ export default function TransitPage() {
             Planetary Positions
           </BlockTitle>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4">
+          <div className="grid gap-4 px-4">
             {globalTransit && (
               <div>
                 <BlockTitle className="!m-0 !mb-2 text-sm font-bold">Global Transit (Today)</BlockTitle>
@@ -219,7 +219,7 @@ export default function TransitPage() {
               </div>
             )}
 
-            {personalTransit && (
+            {/* {personalTransit && (
               <div>
                 <BlockTitle className="!m-0 !mb-2 text-sm font-bold">My Current Transit</BlockTitle>
                 <Card className="!m-0 mb-4">
@@ -322,7 +322,7 @@ export default function TransitPage() {
                   </Card>
                 </Card>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       )}

@@ -4,11 +4,13 @@ import { authClient } from '../lib/auth-client';
 import { useNavigate, Link } from 'react-router-dom';
 import { LoadingPlanet } from '../components/LoadingPlanet';
 import { Sparkles, Mail, Lock, ArrowRight, Star } from 'lucide-react';
+import { FaGoogle } from 'react-icons/fa6';
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [googleLoading, setGoogleLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -29,7 +31,7 @@ export default function LoginPage() {
       } else {
         setErrorMessage(
           error.message ||
-            'The cosmic connection failed. Please check your credentials.',
+          'The cosmic connection failed. Please check your credentials.',
         );
       }
     } catch (err: any) {
@@ -38,6 +40,24 @@ export default function LoginPage() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    setErrorMessage(null);
+    try {
+      const { error } = await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: import.meta.env.VITE_FRONTEND_URL + "/dashboard"
+      });
+      if (error) {
+        setErrorMessage(error.message || 'Google sign-in failed. Please try again.');
+        setGoogleLoading(false);
+      }
+    } catch (err: any) {
+      setErrorMessage('I am sorry, I am currently unable to access my celestial insights. Please try again later.');
+      setGoogleLoading(false);
     }
   };
 
@@ -120,6 +140,27 @@ export default function LoginPage() {
                   </span>
                 </Button>
               </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-3 bg-white dark:bg-slate-900 text-slate-500">Or continue with</span>
+                </div>
+              </div>
+
+              <Button
+                large
+                rounded
+                disabled={googleLoading}
+                onClick={handleGoogleLogin}
+                className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 h-12 border border-slate-200 dark:border-slate-700 shadow-sm transition-all active:scale-[0.98]"
+              >
+                <span className="flex items-center justify-center gap-2 text-slate-700 dark:text-slate-200">
+                  {googleLoading ? 'Connecting to Google...' : <><FaGoogle className="w-5 h-5" /> Continue with Google</>}
+                </span>
+              </Button>
             </form>
 
             <div className='mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center'>
