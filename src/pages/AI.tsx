@@ -150,6 +150,7 @@ export default function AIPage() {
     activeConversationId,
     loading,
     loadingHistory,
+    loadingByConversation,
     hydrated,
     fetchConversations,
     fetchMessages,
@@ -157,6 +158,7 @@ export default function AIPage() {
     setActiveConversationId,
     setLoading,
     addMessage,
+    addMessageToConversation,
   } = useChatStore();
 
   const [coins, setCoins] = useState<number>(0);
@@ -172,6 +174,14 @@ export default function AIPage() {
     'Synthesizing cosmic patterns...',
     'Revealing celestial insights...',
     'Creating personalized recommendations...',
+    'Mapping karma aspects...',
+    'Reading ascendant signs...',
+    'Interpreting moon phases...',
+    'Calculating aspect angles...',
+    'Tracing planetary house positions...',
+    'Decoding stellar influences...',
+    'Generating remedies...',
+    'Preparing cosmic guidance...',
   ];
 
   const speakMessage = (text: string) => {
@@ -202,7 +212,7 @@ export default function AIPage() {
       setLoadingStep(0);
       interval = setInterval(() => {
         setLoadingStep((prev) => (prev + 1) % loadingMessages.length);
-      }, 3000);
+      }, 5000);
     } else {
       setLoadingStep(0);
     }
@@ -218,17 +228,14 @@ export default function AIPage() {
   useEffect(() => {
     if (hydrated) {
       if (id) {
-        if (id !== activeConversationId) {
-          setMessages([]);
-          setActiveConversationId(id);
-        }
+        setActiveConversationId(id);
         fetchMessages(id);
       } else {
         setActiveConversationId(null);
         setMessages([]);
       }
     }
-  }, [id, hydrated, activeConversationId]);
+  }, [id, hydrated]);
 
   const fetchCoins = async () => {
     try {
@@ -242,7 +249,7 @@ export default function AIPage() {
   useEffect(() => {
     if (hydrated) {
       fetchCoins();
-      fetchConversations(true); // Force fetch on mount of AI page
+      fetchConversations(); // Use cache on mount
     }
   }, [hydrated]);
 
@@ -251,6 +258,7 @@ export default function AIPage() {
   }, [messages]);
 
   const startNewChat = () => {
+    setActiveConversationId(null);
     navigate('/ai');
     setMessageText('');
   };
@@ -283,7 +291,7 @@ export default function AIPage() {
       const res = await apiClient.post(
         '/api/ai/chat5',
         { message: text, conversationId: activeConversationId },
-        { timeout: 100000 }, // Wait for 100 seconds
+        { timeout: 180000 }, // Wait for 180 seconds
       );
 
       const aiMessage: ChatMessage = {
@@ -297,11 +305,16 @@ export default function AIPage() {
       };
 
       addMessage(aiMessage);
+      if (!activeConversationId) {
+        addMessageToConversation(res.data.conversationId, newMessage);
+        addMessageToConversation(res.data.conversationId, aiMessage);
+      }
       setCoins(res.data.coinsLeft);
       setLoading(false);
       fetchConversations(true); // Always refresh the conversation list to update titles/timestamps
 
       if (!activeConversationId) {
+        setActiveConversationId(res.data.conversationId);
         navigate(`/ai/${res.data.conversationId}`, { replace: true });
       }
     } catch (err: any) {
@@ -348,6 +361,9 @@ export default function AIPage() {
         }
         right={
           <div className='flex items-center gap-2 mr-2'>
+            {loading && (
+              <Preloader className='w-4 h-4' />
+            )}
             <Button
               clear
               onClick={() => {
@@ -386,7 +402,7 @@ export default function AIPage() {
           className={`
           fixed md:relative z-50 md:z-auto h-full
           ${sidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'}
-          transition-all duration-300 border-r border-gray-100 bg-white md:bg-gray-50/50 flex flex-col overflow-hidden
+          border-r border-gray-100 bg-white md:bg-gray-50/50 flex flex-col overflow-hidden
         `}
         >
           <div className='p-4'>
@@ -417,8 +433,11 @@ export default function AIPage() {
                     key={conv.id}
                     link
                     title={
-                      <div className='text-xs truncate w-full block'>
+                      <div className='text-xs truncate w-full block flex items-center gap-2'>
                         {conv.title}
+                        {loadingByConversation[conv.id] && (
+                          <Preloader className='w-3 h-3' />
+                        )}
                       </div>
                     }
                     onClick={() => {
@@ -454,7 +473,7 @@ export default function AIPage() {
         <div className='flex-1 flex flex-col min-w-0 bg-white'>
           <div className='flex-1 overflow-y-auto p-4'>
             <Messages>
-              {messages.length === 0 && (
+              {messages.length === 0 && !loading && !id && (
                 <div className='flex flex-col items-center justify-center h-full text-center opacity-50 px-10'>
                   <div className='w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-indigo-100/50'>
                     <Bot size={36} className='text-indigo-600' />
@@ -505,20 +524,6 @@ export default function AIPage() {
                   />
                 );
               })}
-              {loading && (
-                <Message
-                  type='received'
-                  name='Astro AI'
-                  text={loadingMessages[loadingStep]}
-                  footer={new Date().toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  className='italic text-indigo-600/70'
-                />
-              )}
-              {loading && <LoadingPlanet />}
-
               <div ref={messagesEndRef} />
             </Messages>
           </div>

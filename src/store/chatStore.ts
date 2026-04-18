@@ -17,10 +17,12 @@ export interface Conversation {
 
 interface ChatState {
   messages: ChatMessage[];
+  messagesByConversation: Record<string, ChatMessage[]>;
   conversations: Conversation[];
   activeConversationId: string | null;
   loading: boolean;
   loadingHistory: boolean;
+  loadingByConversation: Record<string, boolean>;
   hydrated: boolean;
   error: string | null;
   lastFetchedConversationsAt: number | null;
@@ -30,9 +32,11 @@ interface ChatState {
   setMessages: (messages: ChatMessage[]) => void;
   setActiveConversationId: (id: string | null) => void;
   setLoading: (loading: boolean) => void;
+  setConversationLoading: (id: string, loading: boolean) => void;
   fetchConversations: (force?: boolean) => Promise<void>;
   fetchMessages: (id: string, force?: boolean) => Promise<void>;
   addMessage: (message: ChatMessage) => void;
+  addMessageToConversation: (conversationId: string, message: ChatMessage) => void;
   clearChatData: () => void;
 }
 
@@ -40,10 +44,12 @@ export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
       messages: [],
+      messagesByConversation: {},
       conversations: [],
       activeConversationId: null,
       loading: false,
       loadingHistory: false,
+      loadingByConversation: {},
       hydrated: false,
       error: null,
       lastFetchedConversationsAt: null,
@@ -53,18 +59,38 @@ export const useChatStore = create<ChatState>()(
 
       setMessages: (messages) => set({ messages }),
 
-      setActiveConversationId: (id) => set({ activeConversationId: id }),
+      setActiveConversationId: (id) => set({ activeConversationId: id, messages: id ? (get().messagesByConversation[id] || []) : [] }),
 
       setLoading: (loading: boolean) => set({ loading }),
+
+      setConversationLoading: (id: string, loading: boolean) =>
+        set((state) => ({
+          loadingByConversation: {
+            ...state.loadingByConversation,
+            [id]: loading,
+          },
+        })),
 
       addMessage: (message) =>
         set((state) => ({
           messages: [...state.messages, message],
         })),
 
+      addMessageToConversation: (conversationId: string, message: ChatMessage) =>
+        set((state) => ({
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [conversationId]: [
+              ...(state.messagesByConversation[conversationId] || []),
+              message,
+            ],
+          },
+        })),
+
       clearChatData: () =>
         set({
           messages: [],
+          messagesByConversation: {},
           conversations: [],
           activeConversationId: null,
           error: null,
@@ -144,6 +170,7 @@ export const useChatStore = create<ChatState>()(
         }
 
         set({ loading: true, activeConversationId: id });
+        get().setConversationLoading(id, true);
         try {
           const res = await apiClient.get(`/api/ai/conversations/${id}`);
 
@@ -161,7 +188,15 @@ export const useChatStore = create<ChatState>()(
 
           set((state) => ({
             messages: chatMessages,
+            messagesByConversation: {
+              ...state.messagesByConversation,
+              [id]: chatMessages,
+            },
             loading: false,
+            loadingByConversation: {
+              ...state.loadingByConversation,
+              [id]: false,
+            },
             lastFetchedMessagesAt: {
               ...state.lastFetchedMessagesAt,
               [id]: Date.now(),
@@ -169,10 +204,14 @@ export const useChatStore = create<ChatState>()(
           }));
         } catch (err: any) {
           console.error('Error fetching messages', err);
-          set({
+          set((state) => ({
             error: err.message || 'Failed to fetch messages',
             loading: false,
-          });
+            loadingByConversation: {
+              ...state.loadingByConversation,
+              [id]: false,
+            },
+          }));
         }
       },
     }),

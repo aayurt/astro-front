@@ -113,7 +113,7 @@ export default function TransitPage() {
             Planetary Positions
           </BlockTitle>
 
-          <div className="grid gap-4 px-4">
+          <div className="gap-4 px-4">
             {globalTransit && (
               <div>
                 <BlockTitle className="!m-0 !mb-2 text-sm font-bold">Global Transit (Today)</BlockTitle>
