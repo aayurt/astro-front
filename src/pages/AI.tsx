@@ -289,7 +289,7 @@ export default function AIPage() {
 
     try {
       const res = await apiClient.post(
-        '/api/ai/chat5',
+        '/api/ai/chat6',
         { message: text, conversationId: activeConversationId },
         { timeout: 180000 }, // Wait for 180 seconds
       );
@@ -524,6 +524,31 @@ export default function AIPage() {
                   />
                 );
               })}
+              {/* Loading indicator in chat */}
+              {loading && (
+                <Message
+                  type="received"
+                  name="Astro AI"
+                  text={
+                    <div className="flex flex-col items-center justify-center py-4 space-y-3">
+                      <div className="relative">
+                        <div className="w-10 h-10 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Sparkles size={14} className="text-indigo-600 animate-pulse" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 text-center max-w-[200px] animate-pulse">
+                        {loadingMessages[loadingStep]}
+                      </p>
+                    </div>
+                  }
+                  colors={{
+                    bubbleReceivedMd: 'bg-[#f4f5f7] text-[#1f1f1f] tracking-wide',
+                    bubbleReceivedIos: 'bg-[#f4f5f7] text-[#1f1f1f] tracking-wide',
+                  }}
+                  className="mb-4 py-2"
+                />
+              )}
               <div ref={messagesEndRef} />
             </Messages>
           </div>
