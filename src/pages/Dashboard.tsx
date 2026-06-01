@@ -27,6 +27,7 @@ export default function DashboardPage() {
     coins,
     canClaim,
     loading,
+    backgroundRefreshing,
     error,
     fetchAstroData,
     fetchCoinStatus,
@@ -55,7 +56,7 @@ export default function DashboardPage() {
     await claimDailyCoins();
   };
 
-  if (loading) {
+  if (loading && !planets) {
     return (
       <Page>
         <Navbar title='Dashboard' />
@@ -128,7 +129,7 @@ export default function DashboardPage() {
             >
               <RefreshCw
                 size={20}
-                className={`text-gray-400 active:text-indigo-600 transition-colors ${loading ? 'animate-spin' : ''}`}
+                className={`text-gray-400 active:text-indigo-600 transition-colors ${loading || backgroundRefreshing ? 'animate-spin' : ''}`}
               />
             </Button>
             <span className='inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 inset-ring inset-ring-yellow-600/20 whitespace-nowrap'>

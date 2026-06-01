@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import apiClient from '../lib/api-client';
+import { cacheDB } from '../lib/cache';
 
 export interface ChatMessage {
   text: string;
@@ -14,6 +15,8 @@ export interface Conversation {
   title: string;
   updatedAt: string;
 }
+
+const CACHE_TTL_CONVERSATIONS = 60 * 1000;
 
 interface ChatState {
   messages: ChatMessage[];
@@ -64,30 +67,20 @@ export const useChatStore = create<ChatState>()(
       setLoading: (loading: boolean) => set({ loading }),
 
       setConversationLoading: (id: string, loading: boolean) =>
-        set((state) => ({
-          loadingByConversation: {
-            ...state.loadingByConversation,
-            [id]: loading,
-          },
-        })),
+        set((state) => ({ loadingByConversation: { ...state.loadingByConversation, [id]: loading } })),
 
       addMessage: (message) =>
-        set((state) => ({
-          messages: [...state.messages, message],
-        })),
+        set((state) => ({ messages: [...state.messages, message] })),
 
       addMessageToConversation: (conversationId: string, message: ChatMessage) =>
         set((state) => ({
           messagesByConversation: {
             ...state.messagesByConversation,
-            [conversationId]: [
-              ...(state.messagesByConversation[conversationId] || []),
-              message,
-            ],
+            [conversationId]: [...(state.messagesByConversation[conversationId] || []), message],
           },
         })),
 
-      clearChatData: () =>
+      clearChatData: () => {
         set({
           messages: [],
           messagesByConversation: {},
@@ -96,77 +89,66 @@ export const useChatStore = create<ChatState>()(
           error: null,
           lastFetchedConversationsAt: null,
           lastFetchedMessagesAt: {},
-        }),
+        });
+        cacheDB.delete('chat-conversations');
+      },
 
       fetchConversations: async (force = false) => {
         if (get().loadingHistory) return;
-
-        // Wait for hydration before checking cache
         if (!force && !get().hydrated) return;
 
         const now = Date.now();
-        const ONE_MINUTE = 60 * 1000;
-
-        // If not forced, skip if fetched in the last minute AND we have conversations
-        if (
-          !force &&
-          get().conversations.length > 0 &&
-          get().lastFetchedConversationsAt &&
-          now - (get().lastFetchedConversationsAt || 0) < ONE_MINUTE
-        ) {
+        if (!force && get().conversations.length > 0 && get().lastFetchedConversationsAt && now - (get().lastFetchedConversationsAt || 0) < CACHE_TTL_CONVERSATIONS) {
           console.log('Using cached conversations (fresh)');
           return;
+        }
+
+        const cached = await cacheDB.get<Conversation[]>('chat-conversations');
+        if (cached && !force && get().lastFetchedConversationsAt) {
+          set({ conversations: cached });
         }
 
         set({ loadingHistory: true });
         try {
           console.log('Fetching conversations...');
           const res = await apiClient.get('/api/ai/conversations');
-          console.log('Conversations fetched:', res.data.length);
           set({
             conversations: res.data,
             loadingHistory: false,
             lastFetchedConversationsAt: now,
           });
+          cacheDB.set('chat-conversations', res.data, CACHE_TTL_CONVERSATIONS);
         } catch (err: any) {
           console.error('Error fetching conversations:', err);
-          set({
-            error: err.message || 'Failed to fetch conversations',
-            loadingHistory: false,
-          });
+          if (!cached) {
+            set({ error: err.message || 'Failed to fetch conversations', loadingHistory: false });
+          } else {
+            set({ loadingHistory: false });
+          }
         }
       },
 
       fetchMessages: async (id, force = false) => {
-        // Prevent loading if already loading this conversation
         if (get().loading && get().activeConversationId === id) return;
-
-        // Wait for hydration before checking cache
         if (!force && !get().hydrated) return;
 
-        // If switching to a different conversation, clear messages first (handled in component)
-        // but also bypass cache for new conversations
         const isNewConversation = get().activeConversationId !== id;
         const lastFetched = get().lastFetchedMessagesAt[id] || 0;
         const conversation = get().conversations.find((c) => c.id === id);
 
-        // If not forced and not a new conversation, check cache validity
-        if (
-          !force &&
-          !isNewConversation &&
-          get().lastFetchedMessagesAt[id] &&
-          get().messages.length > 0
-        ) {
-          if (
-            conversation &&
-            new Date(conversation.updatedAt).getTime() <= lastFetched
-          ) {
-            console.log(
-              'Using cached messages for conversation (up to date):',
-              id,
-            );
+        if (!force && !isNewConversation && get().lastFetchedMessagesAt[id] && get().messages.length > 0) {
+          if (conversation && new Date(conversation.updatedAt).getTime() <= lastFetched) {
+            console.log('Using cached messages for conversation (up to date):', id);
             return;
           }
+        }
+
+        const cached = await cacheDB.get<ChatMessage[]>(`chat-messages-${id}`);
+        if (cached && !force && !isNewConversation) {
+          set({
+            messages: cached,
+            messagesByConversation: { ...get().messagesByConversation, [id]: cached },
+          });
         }
 
         set({ loading: true, activeConversationId: id });
@@ -174,44 +156,36 @@ export const useChatStore = create<ChatState>()(
         try {
           const res = await apiClient.get(`/api/ai/conversations/${id}`);
 
-          const chatMessages: ChatMessage[] = res.data.messages.map(
-            (m: any) => ({
-              text: m.content,
-              type: m.role === 'user' ? 'sent' : 'received',
-              name: m.role === 'user' ? 'Me' : 'Astro AI',
-              time: new Date(m.createdAt).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              }),
-            }),
-          );
+          const chatMessages: ChatMessage[] = res.data.messages.map((m: any) => ({
+            text: m.content,
+            type: m.role === 'user' ? 'sent' : 'received',
+            name: m.role === 'user' ? 'Me' : 'Astro AI',
+            time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }));
 
           set((state) => ({
             messages: chatMessages,
-            messagesByConversation: {
-              ...state.messagesByConversation,
-              [id]: chatMessages,
-            },
+            messagesByConversation: { ...state.messagesByConversation, [id]: chatMessages },
             loading: false,
-            loadingByConversation: {
-              ...state.loadingByConversation,
-              [id]: false,
-            },
-            lastFetchedMessagesAt: {
-              ...state.lastFetchedMessagesAt,
-              [id]: Date.now(),
-            },
+            loadingByConversation: { ...state.loadingByConversation, [id]: false },
+            lastFetchedMessagesAt: { ...state.lastFetchedMessagesAt, [id]: Date.now() },
           }));
+
+          cacheDB.set(`chat-messages-${id}`, chatMessages, CACHE_TTL_CONVERSATIONS);
         } catch (err: any) {
           console.error('Error fetching messages', err);
-          set((state) => ({
-            error: err.message || 'Failed to fetch messages',
-            loading: false,
-            loadingByConversation: {
-              ...state.loadingByConversation,
-              [id]: false,
-            },
-          }));
+          if (!cached) {
+            set((state) => ({
+              error: err.message || 'Failed to fetch messages',
+              loading: false,
+              loadingByConversation: { ...state.loadingByConversation, [id]: false },
+            }));
+          } else {
+            set((state) => ({
+              loading: false,
+              loadingByConversation: { ...state.loadingByConversation, [id]: false },
+            }));
+          }
         }
       },
     }),

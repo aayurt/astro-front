@@ -1,37 +1,16 @@
 import axios from 'axios';
-import { authClient } from './auth-client';
 import { useAstroStore } from '../store/astroStore';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 /**
  * Centrally configured axios instance for API requests.
- * Automatically adds JWT Bearer token to requests if available.
+ * Session cookie is sent automatically via withCredentials.
  */
 export const apiClient = axios.create({
   baseURL: BACKEND_URL,
   withCredentials: true,
 });
-
-// Request interceptor to add the JWT token to headers
-apiClient.interceptors.request.use(
-  async (config) => {
-    try {
-      const session = await authClient.getSession();
-      const token = session.data?.session?.token;
-
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.error('Failed to get session token for API request', error);
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  },
-);
 
 // Response interceptor to handle 401 Unauthorized globally
 apiClient.interceptors.response.use(

@@ -11,7 +11,7 @@ import { LocationSearchResult, User } from '../types/api';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 export default function ProfilePage() {
-  const { user: storeUser, clearAstroData, hydrated, updateUser } = useAstroStore();
+  const { user: storeUser, clearAstroData, hydrated, updateUser, refreshData, fetchAllTransitData } = useAstroStore();
   const { clearChatData } = useChatStore();
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('');
@@ -182,6 +182,12 @@ export default function ProfilePage() {
       <Block>
         <Button large onClick={handleUpdate} disabled={fetchingTimezone || loading}>
           {loading ? 'Updating...' : 'Update & Recalculate'}
+        </Button>
+      </Block>
+
+      <Block>
+        <Button large outline onClick={async () => { await refreshData(); await fetchAllTransitData(true); }}>
+          Sync Now
         </Button>
       </Block>
 
