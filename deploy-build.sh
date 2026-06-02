@@ -3,7 +3,7 @@ set -e
 
 SERVER="root@217.154.58.85"
 REMOTE_PATH="/var/www/astro-front"
-LOCAL_PATH="/Users/aayurtshrestha/projects/Astro/astro-app"
+LOCAL_PATH="/Users/aayurtshrestha/Projects/self/astro/astro-front"
 
 echo "🚀 Starting build..."
 cd $LOCAL_PATH

@@ -1,10 +1,12 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Block, BlockTitle, Card, Navbar, Page, Segmented, SegmentedButton } from 'konsta/react';
+import { Block, BlockTitle, Button, Card, Navbar, Page, Preloader, Segmented, SegmentedButton } from 'konsta/react';
+import { Sparkles } from 'lucide-react';
 import VedicChart from '../components/VedicChart';
 import { useAstroStore } from '../store/astroStore';
 import { ZODIAC_SIGNS } from '../types/constants';
 import { LoadingPlanet } from '../components/LoadingPlanet';
+import apiClient from '../lib/api-client';
 
 const TABS = [
   { key: 'global', label: 'Global Transit' },
@@ -56,7 +58,7 @@ function PlanetTable({ data }: { data: Record<string, any> }) {
                   {(planet.normDegree % 30).toFixed(2)}°
                 </td>
                 <td className='p-2 text-gray-600'>
-                  {planet.zodiac_sign_name || ZODIAC_SIGNS[planet.current_sign - 1]}
+                  {planet.zodiac_sign_name || ZODIAC_SIGNS[(planet.transit_sign || planet.current_sign) - 1]}
                 </td>
                 <td className='p-2 text-gray-600 italic'>{planet.zodiac_sign_lord || '-'}</td>
                 <td className='p-2 text-gray-600'>
@@ -122,6 +124,37 @@ export default function TransitPage() {
     : activeTab === 'lagna' ? lagnaGochar
     : chandraGochar;
 
+  const [predictions, setPredictions] = useState<Record<string, { prediction: string; remedy: string | null }>>({});
+  const [predictionLoading, setPredictionLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    apiClient.get('/api/ai/transit-prediction').then(res => {
+      if (res.data && Object.keys(res.data).length > 0) {
+        setPredictions(res.data);
+      }
+    }).catch(() => {});
+  }, [hydrated]);
+
+  const activePrediction = predictions[`${activeTab}_${new Date().toISOString().slice(0, 10)}`];
+
+  const getPrediction = useCallback(async () => {
+    setPredictionLoading(true);
+    setPredictionError(null);
+    try {
+      const res = await apiClient.post('/api/ai/transit-prediction', { transitType: activeTab });
+      setPredictions(prev => ({
+        ...prev,
+        [`${activeTab}_${new Date().toISOString().slice(0, 10)}`]: res.data,
+      }));
+    } catch (err: any) {
+      setPredictionError(err.response?.data?.error || 'Failed to load prediction');
+    } finally {
+      setPredictionLoading(false);
+    }
+  }, [activeTab]);
+
   const tabLabels: Record<Tab, string> = {
     global: 'Global Transit (Today)',
     lagna: 'Lagna Gochar (Today)',
@@ -171,6 +204,45 @@ export default function TransitPage() {
                     <p className='p-4 text-center text-gray-500'>Planet data not available</p>
                   )}
                 </Card>
+
+                <div className='mt-4'>
+                  <Button
+                    onClick={getPrediction}
+                    disabled={predictionLoading}
+                    className='w-full flex items-center justify-center gap-2'
+                  >
+                    {predictionLoading ? (
+                      <Preloader className='w-4 h-4' />
+                    ) : (
+                      <Sparkles className='w-4 h-4' />
+                    )}
+                    {predictionLoading ? 'Consulting the stars...' : 'AI Transit Prediction'}
+                  </Button>
+
+                  {predictionError && (
+                    <p className='mt-2 text-sm text-red-500 text-center'>{predictionError}</p>
+                  )}
+
+                  {activePrediction && (
+                    <Card className='mt-3 !p-3 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 border-indigo-100'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <Sparkles className='w-4 h-4 text-indigo-600' />
+                        <span className='font-bold text-indigo-900 text-xs uppercase tracking-wider'>Prediction</span>
+                      </div>
+                      <p className='text-sm text-gray-700 leading-relaxed whitespace-pre-wrap'>{activePrediction.prediction}</p>
+
+                      {activePrediction.remedy && activePrediction.remedy !== 'None needed' && (
+                        <div className='mt-3 pt-3 border-t border-indigo-200/50'>
+                          <div className='flex items-center gap-2 mb-1'>
+                            <Sparkles className='w-3 h-3 text-amber-500' />
+                            <span className='font-bold text-amber-800 text-xs uppercase tracking-wider'>Remedy</span>
+                          </div>
+                          <p className='text-sm text-gray-700 leading-relaxed whitespace-pre-wrap'>{activePrediction.remedy}</p>
+                        </div>
+                      )}
+                    </Card>
+                  )}
+                </div>
               </Card>
             </div>
           </div>
