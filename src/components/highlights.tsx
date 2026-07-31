@@ -1,14 +1,6 @@
-import {
-    Block,
-    BlockTitle,
-    Card,
-    Link,
-    Navbar,
-    Page,
-    Popup,
-    Preloader
-} from 'konsta/react';
-import { CircleX } from 'lucide-react';
+import { Card } from '../components/modern-ui/card';
+import { Dialog, DialogContent, DialogClose } from '../components/modern-ui/dialog';
+import { Skeleton } from '../components/Skeleton';
 import React from 'react';
 import { useAstroStore } from '../store/astroStore';
 
@@ -18,14 +10,14 @@ interface Highlight {
 }
 
 const PLANET_OPTIONS = [
-    { title: 'Retrograde Alert', color: 'text-purple-800', backgroundColor: 'bg-purple-50', borderColor: 'inset-ring px-2 py-1 inset-ring-purple-800/20' },
-    { title: 'Combust Alert', color: 'text-red-800', backgroundColor: 'bg-red-50', borderColor: 'inset-ring px-2 py-1 inset-ring-red-800/20' },
-    { title: 'Moon Sign', color: 'text-grey-200', backgroundColor: 'bg-grey-50', borderColor: 'inset-ring px-2 py-1 inset-ring-grey-200/20' },
-    { title: 'Sun Sign', color: 'text-orange-800', backgroundColor: 'bg-orange-50', borderColor: 'inset-ring px-2 py-1 inset-ring-orange-800/20' },
-    { title: 'Atmakaraka', color: 'text-purple-400', backgroundColor: 'bg-purple-50', borderColor: 'inset-ring px-2 py-1 inset-ring-purple-400/20' },
-    { title: 'Darakaraka', color: 'text-red-400', backgroundColor: 'bg-red-50', borderColor: 'inset-ring px-2 py-1 inset-ring-red-400/20' },
-    { title: 'Conjunctions', color: 'text-orange-500', backgroundColor: 'bg-orange-50', borderColor: 'inset-ring px-2 py-1 inset-ring-orange-500/20' },
-    { title: 'Yogakaraka', color: 'text-green-500', backgroundColor: 'bg-green-50', borderColor: 'inset-ring px-2 py-1 inset-ring-green-500/20' },
+    { title: 'Retrograde Alert', color: 'text-purple-800', backgroundColor: 'bg-purple-50', borderColor: 'border-purple-800/30' },
+    { title: 'Combust Alert', color: 'text-red-800', backgroundColor: 'bg-red-50', borderColor: 'border-red-800/30' },
+    { title: 'Moon Sign', color: 'text-grey-200', backgroundColor: 'bg-grey-50', borderColor: 'border-grey-200/30' },
+    { title: 'Sun Sign', color: 'text-orange-800', backgroundColor: 'bg-orange-50', borderColor: 'border-orange-800/30' },
+    { title: 'Atmakaraka', color: 'text-purple-400', backgroundColor: 'bg-purple-50', borderColor: 'border-purple-400/30' },
+    { title: 'Darakaraka', color: 'text-red-400', backgroundColor: 'bg-red-50', borderColor: 'border-red-400/30' },
+    { title: 'Conjunctions', color: 'text-orange-500', backgroundColor: 'bg-orange-50', borderColor: 'border-orange-500/30' },
+    { title: 'Yogakaraka', color: 'text-green-500', backgroundColor: 'bg-green-50', borderColor: 'border-green-500/30' },
 ]
 
 export const PlanetaryHighlights = () => {
@@ -42,9 +34,7 @@ export const PlanetaryHighlights = () => {
         if (!planets && !loading && !error) {
             fetchAstroData();
         }
-    }, [planets, loading, error, fetchAstroData]);
-
-    React.useEffect(() => {
+    }, [planets, loading, error, fetchAstroData]);    React.useEffect(() => {
         if (planets) {
             const newHighlights: Highlight[] = [];
             const planetEntries = Object.entries(planets);
@@ -172,98 +162,87 @@ export const PlanetaryHighlights = () => {
 
     if (loading) {
         return (
-            <Block className="flex justify-center py-4">
-                <Preloader />
-            </Block>
+            <div className="flex justify-center py-4">
+                <Skeleton className="w-8 h-8 rounded-full" />
+            </div>
         );
     }
 
     if (highlights.length === 0) return null;
 
     return (
-        <Card className='border border-gray-300 rounded-lg'>
-            <div className="px-4 py-2">
-                <BlockTitle className="m-0! mb-2! uppercase text-xs font-bold tracking-wider text-gray-500">Planetary Highlights</BlockTitle>
+        <Card className="p-4">
+                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider m-0 mb-2">Planetary Highlights</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {highlights.map((h, i) => {
                         const option = PLANET_OPTIONS.find((o) => o.title === h.title);
                         if (!option) return null;
                         return (
-                            <Card key={i} className={`m-0! border border-gray-100 shadow-sm rounded-xl bg-white p-4 ${option.backgroundColor} ${option.borderColor}`}>
+                            <Card key={i} className={`m-0! p-3 ${option.backgroundColor} ${option.borderColor}`}>
                                 <div className="flex flex-col gap-1">
                                     <span className={`text-xs font-bold ${option.color} uppercase tracking-tight`}>{h.title}</span>
                                     <p className="text-sm text-gray-700 leading-relaxed font-medium">{h.detail}</p>
                                     {h.title === 'Retrograde Alert' && (
-                                        <Link
-                                            className="k-color-brand-primary text-sm mt-1 inline-block"
+                                        <button
+                                            className="text-primary-600 text-sm hover:underline inline-block mt-1"
                                             onClick={() => setShowRetrogradeModal(true)}
                                         >
                                             Read More
-                                        </Link>
+                                        </button>
                                     )}
                                     {h.title === 'Combust Alert' && (
-                                        <Link
-                                            className="k-color-brand-primary text-sm mt-1 inline-block"
+                                        <button
+                                            className="text-primary-600 text-sm hover:underline inline-block mt-1"
                                             onClick={() => setShowCombustModal(true)}
                                         >
                                             Read More
-                                        </Link>
+                                        </button>
                                     )}
                                     {h.title === 'Atmakaraka' && (
-                                        <Link
-                                            className="k-color-brand-primary text-sm mt-1 inline-block"
+                                        <button
+                                            className="text-primary-600 text-sm hover:underline inline-block mt-1"
                                             onClick={() => setShowAtmakarakaModal(true)}
                                         >
                                             Read More
-                                        </Link>
+                                        </button>
                                     )}
                                     {h.title === 'Darakaraka' && (
-                                        <Link
-                                            className="k-color-brand-primary text-sm mt-1 inline-block"
+                                        <button
+                                            className="text-primary-600 text-sm hover:underline inline-block mt-1"
                                             onClick={() => setShowDarakarakaModal(true)}
                                         >
                                             Read More
-                                        </Link>
+                                        </button>
                                     )}
                                     {h.title === 'Yogakaraka' && (
-                                        <Link
-                                            className="k-color-brand-primary text-sm mt-1 inline-block"
+                                        <button
+                                            className="text-primary-600 text-sm hover:underline inline-block mt-1"
                                             onClick={() => setShowYogakarakaModal(true)}
                                         >
                                             Read More
-                                        </Link>
+                                        </button>
                                     )}
                                     {h.title === 'Conjunctions' && (
-                                        <Link
-                                            className="k-color-brand-primary text-sm mt-1 inline-block"
+                                        <button
+                                            className="text-primary-600 text-sm hover:underline inline-block mt-1"
                                             onClick={() => setShowConjunctionsModal(true)}
                                         >
                                             Read More
-                                        </Link>
+                                        </button>
                                     )}
                                 </div>
                             </Card>
                         )
                     })}
                 </div>
-            </div>
-            <Popup
-                opened={showCombustModal}
-                onBackdropClick={() => setShowCombustModal(false)}
-            >
-                <Page>
-                    <Navbar
-                        title="Combust (Astangata) Explained"
-                        right={<></>}
-                    >
-                        <button onClick={() => setShowCombustModal(false)} className="w-4 cursor-pointer"><CircleX /></button>
-                    </Navbar>
-                    <Block className="text-sm text-gray-700">
+            <Dialog open={showCombustModal} onOpenChange={setShowCombustModal}>
+                <DialogContent title="Combust (Astangata) Explained">
+                    <div className="text-sm text-gray-700 space-y-3 max-h-[70vh] overflow-y-auto">
                         <p className='mb-2'>
                             In Vedic astrology, a planet is called <strong>Combust</strong> (or <strong>Astangata</strong>) when it gets too close to the Sun.
                         </p>
                         <p className='mb-2 italic'>
-                            Think of the Sun as a massive, blinding spotlight. When a planet stands right next to it, the planet’s own "light" or external influence is swallowed up by the Sun’s brilliance. While the planet is still there and its internal strength remains, it struggles to project its energy into the physical world.
+                            Think of the Sun as a massive, blinding spotlight. When a planet stands right next to it, the planet's own "light" or external influence is swallowed up by the Sun's brilliance. While the planet is still there and its internal strength remains, it struggles to project its energy into the physical world.
                         </p>
 
                         <h4 className='font-bold mt-3 mb-1'>1. The "Burning" Degrees</h4>
@@ -295,7 +274,7 @@ export const PlanetaryHighlights = () => {
                         </p>
                         <ul className='list-disc pl-5 mb-2'>
                             <li><strong>Loss of External Results:</strong> You might have the talent, but the world doesn't "see" it easily. A combust Venus might give deep artistic talent, but difficulty finding public appreciation.</li>
-                            <li><strong>The "Sun" Takes Over:</strong> The planet’s energy begins to serve the Sun’s agenda (authority, ego, soul's purpose).</li>
+                            <li><strong>The "Sun" Takes Over:</strong> The planet's energy begins to serve the Sun's agenda (authority, ego, soul's purpose).</li>
                             <li><strong>Internalization:</strong> The qualities become very private. A combust Mercury may be brilliant but find it difficult to express thoughts verbally in crowds.</li>
                         </ul>
 
@@ -312,7 +291,7 @@ export const PlanetaryHighlights = () => {
                             <li><strong>Combust Mercury:</strong> Can lead to a "burnt" intellect—very sharp but perhaps overly sensitive or prone to nervous tension.</li>
                             <li><strong>Combust Venus:</strong> Often indicates "sacrificial love" or hidden relationships; beauty that is deeply soul-stirring but non-standard.</li>
                             <li><strong>Combust Jupiter:</strong> May cause unconventional beliefs or difficulty with traditional teachers and "established" luck.</li>
-                            <li><strong>Combust Saturn:</strong> Can create a feeling that one’s hard work is never noticed by authority figures.</li>
+                            <li><strong>Combust Saturn:</strong> Can create a feeling that one's hard work is never noticed by authority figures.</li>
                         </ul>
 
                         <h4 className='font-bold mt-3 mb-1'>5. Is it always "Bad"?</h4>
@@ -327,26 +306,17 @@ export const PlanetaryHighlights = () => {
                         <p className='italic mt-2'>
                             <strong>Crucial Tip:</strong> Check if the combust planet is your Yogakaraka or Atmakaraka. If your soul planet (AK) is combust, your life journey is deeply focused on stripping away the ego to find your true self.
                         </p>
-                    </Block>
-                </Page>
-            </Popup>
-            <Popup
-                opened={showRetrogradeModal}
-                onBackdropClick={() => setShowRetrogradeModal(false)}
-            >
-                <Page>
-                    <Navbar
-                        title="Retrograde (Vakra) Explained"
-                        right={<></>}
-                    >
-                        <button onClick={() => setShowRetrogradeModal(false)} className="w-4 cursor-pointer"><CircleX /></button>
-                    </Navbar>
-                    <Block className="text-sm text-gray-700">
+                    </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={showRetrogradeModal} onOpenChange={setShowRetrogradeModal}>
+                <DialogContent title="Retrograde (Vakra) Explained">
+                    <div className="text-sm text-gray-700 space-y-3 max-h-[70vh] overflow-y-auto">
                         <p className='mb-2'>
                             In Vedic astrology, a retrograde planet is called <strong>Vakra</strong> (meaning "twisted" or "indirect").
                         </p>
                         <p className='mb-2 italic'>
-                            When a planet is retrograde, it appears to be moving backward from our perspective on Earth. While it’s an optical illusion in astronomy, in astrology, it signifies a planet that is unusually close to Earth, making its energy feel "louder," more intense, and deeply internalized.
+                            When a planet is retrograde, it appears to be moving backward from our perspective on Earth. While it's an optical illusion in astronomy, in astrology, it signifies a planet that is unusually close to Earth, making its energy feel "louder," more intense, and deeply internalized.
                         </p>
 
                         <h4 className='font-bold mt-3 mb-1'>1. The "Chesta Bala" (The Power of Effort)</h4>
@@ -355,7 +325,7 @@ export const PlanetaryHighlights = () => {
                             <br />
                             <strong>The Logic:</strong> Because the planet is closer to Earth, it exerts a stronger gravitational and "karmic" pull.
                             <br />
-                            <strong>The Result:</strong> A retrograde planet is "strong," but that strength isn't always easy to use. It’s like a car with a massive engine but a very sensitive steering wheel—it has power, but it requires more effort to control.
+                            <strong>The Result:</strong> A retrograde planet is "strong," but that strength isn't always easy to use. It's like a car with a massive engine but a very sensitive steering wheel—it has power, but it requires more effort to control.
                         </p>
 
                         <h4 className='font-bold mt-3 mb-1'>2. The Psychology: Looking Inward</h4>
@@ -406,23 +376,14 @@ export const PlanetaryHighlights = () => {
                         </p>
 
                         <p className='italic mt-2'>
-                            <strong>Summary:</strong> Don't fear a retrograde planet! It isn't "weak" or "bad"—it’s just deliberate. It refuses to be rushed.
+                            <strong>Summary:</strong> Don't fear a retrograde planet! It isn't "weak" or "bad"—it's just deliberate. It refuses to be rushed.
                         </p>
-                    </Block>
-                </Page>
-            </Popup>
-            <Popup
-                opened={showDarakarakaModal}
-                onBackdropClick={() => setShowDarakarakaModal(false)}
-            >
-                <Page>
-                    <Navbar
-                        title="Darakaraka Explained"
-                        right={<></>}
-                    >
-                        <button onClick={() => setShowDarakarakaModal(false)} className="w-4 cursor-pointer"><CircleX /></button>
-                    </Navbar>
-                    <Block className="text-sm text-gray-700">
+                    </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={showDarakarakaModal} onOpenChange={setShowDarakarakaModal}>
+                <DialogContent title="Darakaraka Explained">
+                    <div className="text-sm text-gray-700 space-y-3 max-h-[70vh] overflow-y-auto">
                         <p className='mb-2'>
                             If the <strong>Atmakaraka</strong> is the "King" of your chart representing You, then the <strong>Darakaraka (DK)</strong> is the "Queen," representing your <strong>Spouse</strong> or long-term life partner.
                         </p>
@@ -472,23 +433,12 @@ export const PlanetaryHighlights = () => {
                         <p className='italic mt-2'>
                             <strong>Pro-Tip:</strong> Check the D9 (Navamsha) chart for your Darakaraka. The sign it sits in there often reveals the true inner nature of your spouse, which might only become apparent after the "honeymoon phase" is over.
                         </p>
-                    </Block>
-                </Page>
-            </Popup>
-            <Popup
-                opened={showAtmakarakaModal}
-                onBackdropClick={() => setShowAtmakarakaModal(false)}
-            >
-                <Page>
-                    <Navbar
-                        title="Atmakaraka Explained"
-                        right={<></>
-                        }
-                    >
-                        <button onClick={() => setShowAtmakarakaModal(false)} className="w-4 cursor-pointer"><CircleX /></button>
-
-                    </Navbar>
-                    <Block className="text-sm text-gray-700">
+                    </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={showAtmakarakaModal} onOpenChange={setShowAtmakarakaModal}>
+                <DialogContent title="Atmakaraka Explained">
+                    <div className="text-sm text-gray-700 space-y-3 max-h-[70vh] overflow-y-auto">
                         <p className='mb-2'>
                             If the <strong>Yogakaraka</strong> is the CEO of your career and material success, the <strong>Atmakaraka (AK)</strong> is the King/Queen of your soul.
                         </p>
@@ -537,23 +487,12 @@ export const PlanetaryHighlights = () => {
                         <p className='italic mt-2'>
                             <strong>A quick tip:</strong> Always look at the house where your AK sits. That area of life will be the primary "classroom" for your soul's growth.
                         </p>
-                    </Block>
-                </Page>
-            </Popup>
-            <Popup
-                opened={showConjunctionsModal}
-                onBackdropClick={() => setShowConjunctionsModal(false)}
-            >
-                <Page>
-                    <Navbar
-                        title="Conjunctions Explained"
-                        right={<></>
-                        }
-                    >
-                        <button onClick={() => setShowConjunctionsModal(false)} className="w-4 cursor-pointer"><CircleX /></button>
-
-                    </Navbar>
-                    <Block className="text-sm text-gray-700">
+                    </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={showConjunctionsModal} onOpenChange={setShowConjunctionsModal}>
+                <DialogContent title="Conjunctions Explained">
+                    <div className="text-sm text-gray-700 space-y-3 max-h-[70vh] overflow-y-auto">
                         <p className='mb-2'>
                             In Vedic astrology, a <strong>Conjunction</strong> (known as <strong>Yuti</strong>) occurs when two or more planets sit in the same house in your birth chart.
                         </p>
@@ -593,7 +532,7 @@ export const PlanetaryHighlights = () => {
 
                         <h4 className='font-bold mt-3 mb-1'>4. The "Combust" Factor (Astangata)</h4>
                         <p className='mb-2'>
-                            If a planet gets too close to the Sun (usually within 6° to 10°), it becomes <strong>Combust</strong>. Think of it like standing too close to a massive spotlight; you’re still there, but no one can see you because the light is blinding.
+                            If a planet gets too close to the Sun (usually within 6° to 10°), it becomes <strong>Combust</strong>. Think of it like standing too close to a massive spotlight; you're still there, but no one can see you because the light is blinding.
                         </p>
 
                         <h4 className='font-bold mt-3 mb-1'>5. Planetary War (Graha Yuddha)</h4>
@@ -619,23 +558,12 @@ export const PlanetaryHighlights = () => {
                                 </tbody>
                             </table>
                         </div>
-                    </Block>
-                </Page>
-            </Popup>
-            <Popup
-                opened={showYogakarakaModal}
-                onBackdropClick={() => setShowYogakarakaModal(false)}
-            >
-                <Page>
-                    <Navbar
-                        title="Yogakaraka Explained"
-                        right={<></>
-                        }
-                    >
-                        <button onClick={() => setShowYogakarakaModal(false)} className="w-4 cursor-pointer"><CircleX /></button>
-
-                    </Navbar>
-                    <Block className="text-sm text-gray-700">
+                    </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={showYogakarakaModal} onOpenChange={setShowYogakarakaModal}>
+                <DialogContent title="Yogakaraka Explained">
+                    <div className="text-sm text-gray-700 space-y-3 max-h-[70vh] overflow-y-auto">
                         <p className='mb-2'>
                             In Vedic astrology, a planet only earns the title of "Yogakaraka" (the maker of great combinations) if it simultaneously rules a Kendra (an angular house: 1, 4, 7, 10) and a Trikona (a trinal house: 1, 5, 9).
                         </p>
@@ -669,7 +597,7 @@ export const PlanetaryHighlights = () => {
                         <p className='mb-2'>
                             For the other signs (Aries, Gemini, Virgo, Scorpio, Sagittarius, and Pisces), no single planet rules both a Kendra and a Trikona.
                             <br />
-                            For example, in Aries: The 9th house (Trikona) is ruled by Jupiter, and the 10th house (Kendra) is ruled by Saturn. Since it’s two different planets, neither can claim the "Yogakaraka" title alone. They have to work together (in conjunction or aspect) to create a Raja Yoga.
+                            For example, in Aries: The 9th house (Trikona) is ruled by Jupiter, and the 10th house (Kendra) is ruled by Saturn. Since it's two different planets, neither can claim the "Yogakaraka" title alone. They have to work together (in conjunction or aspect) to create a Raja Yoga.
                         </p>
                         <p className='mb-2'>
                             Neutrality: In these signs, planets often rule one "good" house and one "difficult" house (like the 6th, 8th, or 12th), which "dilutes" their power to be a pure Yogakaraka.
@@ -680,9 +608,9 @@ export const PlanetaryHighlights = () => {
                             <br />
                             Think of it like this: A Yogakaraka is like a multi-talented CEO who can handle both strategy and operations. For the other signs, you just need a great Strategist and a great Operator working in sync.
                         </p>
-                    </Block>
-                </Page>
-            </Popup>
-        </Card >
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </Card>
     );
 };

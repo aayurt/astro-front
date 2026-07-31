@@ -1,25 +1,29 @@
-import { Block, BlockTitle, Card, List, ListItem, Preloader } from 'konsta/react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import React from 'react';
 import { useAstroStore } from '../store/astroStore';
+import { Card } from '../components/modern-ui/card';
+import { Badge } from '../components/modern-ui/badge';
+import { ListSkeleton } from '../components/Skeleton';
 
 export const YoginiDasha = () => {
     const { yoginiDashas, loading, fetchYoginiDashas } = useAstroStore();
     const [expandedIndex, setExpandedIndex] = React.useState<number | null>(null);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
+    const didFetch = React.useRef(false);
     const now = new Date();
 
     React.useEffect(() => {
-        if (yoginiDashas.length === 0) {
+        if (yoginiDashas.length === 0 && !didFetch.current) {
+            didFetch.current = true;
             fetchYoginiDashas();
         }
     }, [yoginiDashas, fetchYoginiDashas]);
 
     if (loading) {
         return (
-            <Block className="flex justify-center py-4">
-                <Preloader />
-            </Block>
+            <div className="px-4 py-2">
+                <ListSkeleton rows={4} />
+            </div>
         );
     }
 
@@ -35,16 +39,16 @@ export const YoginiDasha = () => {
 
     return (
         <div className="px-4 py-2">
-            <BlockTitle className="m-0! mb-2! uppercase text-xs font-bold tracking-wider text-gray-500">Yogini Dasha</BlockTitle>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-4 mb-2">Yogini Dasha</h2>
 
-            <Card className="m-0! border border-gray-100 shadow-sm rounded-xl bg-white overflow-hidden">
-                <ListItem
-                    link
+            <Card className="overflow-hidden">
+                <button
                     onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                    className="border-b border-gray-50"
-                    title="What is Yogini Dasha?"
-                    after={isDescriptionExpanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-                />
+                    className="w-full flex items-center justify-between p-4 border-b border-gray-50 text-left"
+                >
+                    <span className="text-sm font-medium text-gray-800">What is Yogini Dasha?</span>
+                    {isDescriptionExpanded ? <ChevronUp size={18} className="text-gray-400 shrink-0" /> : <ChevronDown size={18} className="text-gray-400 shrink-0" />}
+                </button>
                 {isDescriptionExpanded && (
                     <div className='p-4 text-sm text-gray-600'>
                         <p className='mb-2'>
@@ -89,11 +93,11 @@ export const YoginiDasha = () => {
                         <h4 className='font-bold mt-3 mb-1'>Why use it?</h4>
                         <p className='mb-2'>
                             Astrologers often use Yogini Dasha as a cross-check.
-                            If your Vimshottari Dasha says you’ll get a promotion, but your Yogini Dasha is "Ulka" (Saturn/Obstacles), the promotion might be delayed or come with an exhausting amount of extra work.
+                            If your Vimshottari Dasha says you'll get a promotion, but your Yogini Dasha is "Ulka" (Saturn/Obstacles), the promotion might be delayed or come with an exhausting amount of extra work.
                         </p>
                         <h4 className='font-bold mt-3 mb-1'>A Note on "Auspiciousness"</h4>
                         <p>
-                            It's easy to get worried seeing names like Sankata (Danger) or Ulka (Firebrand), but it’s important to remember that these are symbolic. These periods represent times of karmic clearing. Much like the seasons, some years are for planting (hard work) and some are for harvesting (rewards).
+                            It's easy to get worried seeing names like Sankata (Danger) or Ulka (Firebrand), but it's important to remember that these are symbolic. These periods represent times of karmic clearing. Much like the seasons, some years are for planting (hard work) and some are for harvesting (rewards).
                         </p>
                     </div>
                 )}
@@ -101,71 +105,64 @@ export const YoginiDasha = () => {
                     <h3 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Timeline</h3>
                 </div>
                 <div className="max-h-[500px] overflow-y-auto">
-                    <List strongIos insetIos className="!m-0">
+                    <div className="divide-y divide-gray-100">
                         {yoginiDashas.map((yd, idx) => {
                             const active = isCurrent(yd.startDate, yd.endDate);
                             const expanded = expandedIndex === idx;
 
                             return (
                                 <React.Fragment key={idx}>
-                                    <ListItem
-                                        link
+                                    <button
                                         onClick={() => setExpandedIndex(expanded ? null : idx)}
-                                        className={`${active ? 'bg-amber-50/50 active-dasha' : ''} border-b border-gray-50 last:border-0`}
-                                        title={
+                                        className={`w-full flex items-center justify-between p-4 text-left ${active ? 'bg-amber-50/50' : ''} border-b border-gray-50 last:border-0`}
+                                    >
+                                        <div className="flex flex-col items-start flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <span className={`font-bold ${active ? 'text-amber-600' : 'text-gray-800'}`}>
                                                     {yd.name}
                                                 </span>
                                                 <span className="text-[10px] text-gray-400 font-normal">({yd.planet})</span>
                                                 {active && (
-                                                    <span className="bg-amber-600 text-white text-[8px] px-1 py-0.5 rounded-full uppercase tracking-tighter">
+                                                    <Badge className="bg-amber-600 text-white border-0 text-[8px] px-1 py-0.5 rounded-full uppercase tracking-tighter">
                                                         Active
-                                                    </span>
+                                                    </Badge>
                                                 )}
                                             </div>
-                                        }
-                                        after={
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[12px] font-mono text-gray-800">
-                                                    {formatDate(yd.startDate)}
-                                                </span>
-                                                {expanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
-                                            </div>
-                                        }
-                                        subtitle={
                                             <span className="text-[12px] text-gray-500">
                                                 Ends: {formatDate(yd.endDate)}
                                             </span>
-                                        }
-                                    />
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <span className="text-[12px] font-mono text-gray-800">
+                                                {formatDate(yd.startDate)}
+                                            </span>
+                                            {expanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+                                        </div>
+                                    </button>
                                     {expanded && (
-                                        <div className="bg-amber-50/20">
+                                        <div className="bg-amber-50/20 divide-y divide-gray-50">
                                             {yd.antardashas.map((ad, aIdx) => {
                                                 const adActive = isCurrent(ad.startDate, ad.endDate);
                                                 return (
-                                                    <ListItem
+                                                    <div
                                                         key={`${idx}-${aIdx}`}
-                                                        className="pl-8"
-                                                        title={
+                                                        className="flex items-center justify-between pl-8 pr-4 py-3"
+                                                    >
+                                                        <div className="flex flex-col items-start min-w-0">
                                                             <div className="flex items-center gap-2">
                                                                 <span className={`text-sm ${adActive ? 'font-bold text-amber-500' : 'text-gray-600'}`}>
                                                                     {ad.name}
                                                                 </span>
                                                                 <span className="text-[9px] text-gray-400 font-normal">({ad.planet})</span>
                                                             </div>
-                                                        }
-                                                        after={
-                                                            <span className={`text-[11px] font-mono ${adActive ? 'text-amber-400' : 'text-gray-600'}`}>
-                                                                {formatDate(ad.startDate)}
-                                                            </span>
-                                                        }
-                                                        subtitle={
                                                             <span className="text-[11px] text-gray-500">
                                                                 Ends: {formatDate(ad.endDate)}
                                                             </span>
-                                                        }
-                                                    />
+                                                        </div>
+                                                        <span className={`text-[11px] font-mono shrink-0 ${adActive ? 'text-amber-400' : 'text-gray-600'}`}>
+                                                            {formatDate(ad.startDate)}
+                                                        </span>
+                                                    </div>
                                                 );
                                             })}
                                         </div>
@@ -173,7 +170,7 @@ export const YoginiDasha = () => {
                                 </React.Fragment>
                             );
                         })}
-                    </List>
+                    </div>
                 </div>
             </Card>
         </div>

@@ -188,7 +188,6 @@ test.describe('Console Error Analysis', () => {
 test.describe('Network Request Analysis', () => {
   test('check for failed network requests on public routes', async ({ page }) => {
     const failedReqs = [];
-    const pendingReqs = [];
 
     page.on('requestfailed', req => {
       failedReqs.push({ url: req.url(), failure: req.failure()?.errorText });

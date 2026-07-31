@@ -6,12 +6,16 @@ interface CacheEntry<T = unknown> {
 
 const DB_NAME = 'astro-cache';
 const STORE_NAME = 'api-cache';
-const DB_VERSION = 1;
+// Bump when the API response schema changes so stale cached data is wiped on upgrade.
+const DB_VERSION = 2;
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
+      if (req.result.objectStoreNames.contains(STORE_NAME)) {
+        req.result.deleteObjectStore(STORE_NAME);
+      }
       req.result.createObjectStore(STORE_NAME);
     };
     req.onsuccess = () => resolve(req.result);

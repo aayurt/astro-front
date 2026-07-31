@@ -1,5 +1,4 @@
 import React from 'react';
-import { BlockTitle, Card } from 'konsta/react';
 import { Star, Heart, Zap } from 'lucide-react';
 
 interface PlanetDetail {
@@ -38,7 +37,7 @@ export const SpecialPlanets: React.FC<SpecialPlanetsProps> = ({ data }) => {
     const sign = details?.zodiac_sign_name || '-';
 
     return (
-      <Card className="m-0! border border-gray-100 shadow-sm rounded-xl bg-white p-4">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-3 mb-2">
           <div className={`p-2 ${bgColor} rounded-lg ${textColor}`}>
             {icon}
@@ -63,16 +62,16 @@ export const SpecialPlanets: React.FC<SpecialPlanetsProps> = ({ data }) => {
         <p className="text-[11px] text-gray-600 leading-snug">
           {planetDescriptions[title]}
         </p>
-      </Card>
+      </div>
     );
   };
 
   return (
     <div className="px-4 py-2">
-      <BlockTitle className="m-0! mb-2! uppercase text-[10px] font-black tracking-[0.1em] text-gray-400">Key Planetary Influences</BlockTitle>
+      <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Key Planetary Influences</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {renderPlanetCard('Atmakaraka', data.atmakaraka, <Star size={18} fill="currentColor" />, 'bg-indigo-50', 'text-indigo-600')}
+        {renderPlanetCard('Atmakaraka', data.atmakaraka, <Star size={18} fill="currentColor" />, 'bg-primary-50', 'text-primary-600')}
         {renderPlanetCard('Darakaraka', data.darakaraka, <Heart size={18} fill="currentColor" />, 'bg-pink-50', 'text-pink-600')}
         {renderPlanetCard('Yogakaraka', data.yogakaraka, <Zap size={18} fill="currentColor" />, 'bg-amber-50', 'text-amber-600')}
       </div>

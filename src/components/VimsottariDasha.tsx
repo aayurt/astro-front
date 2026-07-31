@@ -1,4 +1,6 @@
-import { Block, BlockTitle, Card, List, ListItem, Preloader } from 'konsta/react';
+import { Card } from '../components/modern-ui/card';
+import { Badge } from '../components/modern-ui/badge';
+import { ListSkeleton } from '../components/Skeleton';
 import React from 'react';
 import { MahaDasha } from '../types/api';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -8,17 +10,18 @@ export const VimsottariDasha = () => {
     const { mahaDashas, loading, fetchVimsottariDashas } = useAstroStore();
     const [expandedIndex, setExpandedIndex] = React.useState<number | null>(null);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
+    const didFetch = React.useRef(false);
 
     const now = new Date();
     React.useEffect(() => {
-        if (mahaDashas.length === 0) {
+        if (mahaDashas.length === 0 && !didFetch.current) {
+            didFetch.current = true;
             fetchVimsottariDashas();
         }
     }, [mahaDashas, fetchVimsottariDashas]);
 
     React.useEffect(() => {
         if (!loading && mahaDashas.length > 0) {
-            // Auto-expand the current Maha Dasha
             const currentIndex = mahaDashas.findIndex((md: MahaDasha) => {
                 const start = new Date(md.start_date);
                 const end = new Date(md.end_date);
@@ -32,9 +35,9 @@ export const VimsottariDasha = () => {
 
     if (loading) {
         return (
-            <Block className="flex justify-center py-4">
-                <Preloader />
-            </Block>
+            <div className="flex justify-center py-4">
+                <ListSkeleton rows={4} />
+            </div>
         );
     }
 
@@ -46,16 +49,16 @@ export const VimsottariDasha = () => {
 
     return (
         <div className="px-4 py-2">
-            <BlockTitle className="m-0! mb-2! uppercase text-xs font-bold tracking-wider text-gray-500">Vimsottari Dasha</BlockTitle>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-4 mb-2">Vimsottari Dasha</h2>
 
-            <Card className="m-0! border border-gray-100 shadow-sm rounded-xl bg-white overflow-hidden">
-                <ListItem
-                    link
+            <Card className="border border-gray-100 shadow-sm rounded-xl bg-white overflow-hidden">
+                <button
                     onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                    className="border-b border-gray-50"
-                    title="What is Vimshottari Dasha?"
-                    after={isDescriptionExpanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-                />
+                    className="w-full flex items-center justify-between p-3 border-b border-gray-100 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                    <span>What is Vimshottari Dasha?</span>
+                    {isDescriptionExpanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+                </button>
                 {isDescriptionExpanded && (
                     <div className='p-4 text-sm text-gray-600'>
                         <p className='mb-2'>
@@ -87,7 +90,7 @@ export const VimsottariDasha = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <h4 className='font-bold mt-3 mb-1'>How It’s Calculated</h4>
+                        <h4 className='font-bold mt-3 mb-1'>How It's Calculated</h4>
                         <p className='mb-2'>
                             Everything starts with your Moon Nakshatra (the lunar mansion the Moon was in at the exact moment of your birth).
                             <br />
@@ -119,67 +122,48 @@ export const VimsottariDasha = () => {
                     <h3 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Timeline</h3>
                 </div>
                 <div className="max-h-[500px] overflow-y-auto">
-                    <List strongIos insetIos className="!m-0">
+                    <div className="divide-y divide-gray-100">
                         {mahaDashas.map((md, idx) => {
                             const active = isCurrent(md.start_date, md.end_date);
                             const expanded = expandedIndex === idx;
 
                             return (
                                 <React.Fragment key={idx}>
-                                    <ListItem
-                                        link
-                                        onClick={() => setExpandedIndex(expanded ? null : idx)}
-                                        className={`${active ? 'bg-indigo-50/50' : ''} border-b border-gray-50 last:border-0`}
-                                        title={
+                                    <div>
+                                        <button
+                                            onClick={() => setExpandedIndex(expanded ? null : idx)}
+                                            className={`w-full flex items-center justify-between p-3 text-left ${active ? 'bg-primary-50/50' : ''} hover:bg-gray-50 transition-colors`}
+                                        >
                                             <div className="flex items-center gap-2">
-                                                <span className={`font-bold ${active ? 'text-indigo-600' : 'text-gray-800'}`}>
+                                                <span className={`font-semibold text-sm ${active ? 'text-primary-600' : 'text-gray-800'}`}>
                                                     {md.dasha}
                                                 </span>
                                                 {active && (
-                                                    <span className="bg-indigo-600 text-white text-[8px] px-1 py-0.5 rounded-full uppercase tracking-tighter">
-                                                        Active
-                                                    </span>
+                                                    <Badge variant="default" className="text-[10px] px-1.5 py-0.5">Active</Badge>
                                                 )}
                                             </div>
-                                        }
-                                        after={
                                             <div className="flex items-center gap-2">
-                                                <span className="text-[12px] font-mono text-gray-800">
-                                                    {md.start_date.split(' ')[0]}
-                                                </span>
+                                                <span className="text-xs text-gray-500 font-mono">{new Date(md.start_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                                                 {expanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
                                             </div>
-                                        }
-                                        subtitle={
-                                            <span className="text-[12px] text-gray-500">
-                                                Ends: {md.end_date.split(' ')[0]}
-                                            </span>
-                                        }
-                                    />
+                                        </button>
+                                        {expanded && (
+                                            <div className="text-xs text-gray-500 pl-3">{new Date(md.end_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
+                                        )}
+                                    </div>
                                     {expanded && (
                                         <div className="bg-gray-50/50">
                                             {md.antar_dashas.map((ad, aIdx) => {
                                                 const adActive = isCurrent(ad.start_date, ad.end_date);
                                                 return (
-                                                    <ListItem
-                                                        key={`${idx}-${aIdx}`}
-                                                        className="pl-8"
-                                                        title={
-                                                            <span className={`text-sm ${adActive ? 'font-bold text-indigo-500' : 'text-gray-600'}`}>
-                                                                {ad.dasha}
-                                                            </span>
-                                                        }
-                                                        after={
-                                                            <span className={`text-[11px] font-mono ${adActive ? 'text-indigo-400' : 'text-gray-600'}`}>
-                                                                {ad.start_date.split(' ')[0]}
-                                                            </span>
-                                                        }
-                                                        subtitle={
-                                                            <span className="text-[11px] text-gray-600">
-                                                                Ends: {ad.end_date.split(' ')[0]}
-                                                            </span>
-                                                        }
-                                                    />
+                                                    <div key={`${idx}-${aIdx}`} className="flex items-center justify-between pl-8 pr-3 py-2 border-t border-gray-100">
+                                                        <span className={`text-sm ${adActive ? 'font-semibold text-primary-500' : 'text-gray-600'}`}>
+                                                            {ad.dasha}
+                                                        </span>
+                                                        <span className={`text-xs font-mono ${adActive ? 'text-primary-400' : 'text-gray-400'}`}>
+                                                            {new Date(ad.start_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                        </span>
+                                                    </div>
                                                 );
                                             })}
                                         </div>
@@ -187,7 +171,7 @@ export const VimsottariDasha = () => {
                                 </React.Fragment>
                             );
                         })}
-                    </List>
+                    </div>
                 </div>
             </Card>
         </div>

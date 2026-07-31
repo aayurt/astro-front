@@ -1,10 +1,12 @@
 import React from 'react';
-import { Page, List, ListInput, Button, Block } from 'konsta/react';
-import { authClient } from '../lib/auth-client';
 import { useNavigate, Link } from 'react-router-dom';
+import { authClient } from '../lib/auth-client';
 import { LoadingPlanet } from '../components/LoadingPlanet';
+import { Input } from '../components/modern-ui/input';
+import { Button } from '../components/modern-ui/button';
 import { Sparkles, Mail, Lock, ArrowRight, Star } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa6';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState('');
@@ -62,125 +64,110 @@ export default function LoginPage() {
   };
 
   return (
-    <Page className='bg-slate-50 dark:bg-slate-950'>
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center px-6 py-12">
       {loading && <LoadingPlanet />}
 
-      <div className='min-h-screen flex flex-col justify-center px-6 py-12 lg:px-8'>
-        <div className='sm:mx-auto sm:w-full sm:max-w-md text-center'>
-          <div className='inline-flex items-center justify-center w-20 h-20 rounded-full bg-indigo-600 mb-6 shadow-lg shadow-indigo-500/30'>
-            <Star className='w-10 h-10 text-white fill-white animate-pulse' />
-          </div>
-          <h2 className='text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl'>
-            Welcome Back
-          </h2>
-          <p className='mt-2 text-sm text-slate-600 dark:text-slate-400'>
-            Align with your stars and continue your journey
-          </p>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary-600 mb-6 shadow-lg shadow-primary-500/30">
+          <Star className="w-10 h-10 text-white fill-white animate-pulse" />
         </div>
-
-        <div className='mt-10 sm:mx-auto sm:w-full sm:max-w-md'>
-          <div className='bg-white dark:bg-slate-900 px-6 py-10 shadow-xl rounded-2xl border border-slate-200 dark:border-slate-800'>
-            {errorMessage && (
-              <div className='mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 text-sm flex items-center gap-3 italic'>
-                <Sparkles className='w-4 h-4 flex-shrink-0' />
-                {errorMessage}
-              </div>
-            )}
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleLogin();
-              }}
-              className='space-y-6'
-            >
-              <div className='relative'>
-                <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10'>
-                  <Mail className='h-5 w-5 text-slate-400' />
-                </div>
-                <List strongIos insetIos className='m-0! p-0!'>
-                  <ListInput
-                    type='email'
-                    name='email'
-                    placeholder='Email address'
-                    value={email}
-                    onInput={(e) => setEmail(e.target.value)}
-                    className='pl-10!'
-                  />
-                </List>
-              </div>
-
-              <div className='relative'>
-                <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10'>
-                  <Lock className='h-5 w-5 text-slate-400' />
-                </div>
-                <List strongIos insetIos className='m-0! p-0!'>
-                  <ListInput
-                    type='password'
-                    name='password'
-                    placeholder='Password'
-                    value={password}
-                    onInput={(e) => setPassword(e.target.value)}
-                    className='pl-10!'
-                  />
-                </List>
-              </div>
-
-              <div className='pt-2'>
-                <Button
-                  type='submit'
-                  large
-                  rounded
-                  disabled={loading}
-                  className='bg-indigo-600 hover:bg-indigo-700 h-12 shadow-md shadow-indigo-500/20 transition-all active:scale-[0.98]'
-                >
-                  <span className='flex items-center justify-center gap-2'>
-                    {loading ? 'Consulting the stars...' : 'Login to Dashboard'}
-                    {!loading && <ArrowRight className='w-4 h-4' />}
-                  </span>
-                </Button>
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-3 bg-white dark:bg-slate-900 text-slate-500">Or continue with</span>
-                </div>
-              </div>
-
-              <Button
-                large
-                rounded
-                disabled={googleLoading}
-                onClick={handleGoogleLogin}
-                className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 h-12 border border-slate-200 dark:border-slate-700 shadow-sm transition-all active:scale-[0.98]"
-              >
-                <span className="flex items-center justify-center gap-2 text-slate-700 dark:text-slate-200">
-                  {googleLoading ? 'Connecting to Google...' : <><FaGoogle className="w-5 h-5" /> Continue with Google</>}
-                </span>
-              </Button>
-            </form>
-
-            <div className='mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center'>
-              <p className='text-sm text-slate-600 dark:text-slate-400'>
-                New to the cosmos?{' '}
-                <Link
-                  to='/signup'
-                  className='font-semibold text-indigo-600 hover:text-indigo-500 underline decoration-indigo-200 underline-offset-4'
-                >
-                  Create an account
-                </Link>
-              </p>
-            </div>
-          </div>
-
-          <p className='mt-8 text-center text-xs text-slate-400 dark:text-slate-600 uppercase tracking-widest'>
-            ✨ Trusted by Astrologers Everywhere ✨
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+          Welcome Back
+        </h1>
+        <p className="mt-2 text-sm text-gray-500">
+          Align with your stars and continue your journey
+        </p>
       </div>
-    </Page>
+
+      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white px-6 py-10 shadow-xl rounded-2xl border border-gray-200">
+          {errorMessage && (
+            <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm flex items-center gap-3 italic">
+              <Sparkles className="w-4 h-4 flex-shrink-0" />
+              {errorMessage}
+            </div>
+          )}
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleLogin();
+            }}
+            className="space-y-5"
+          >
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
+              <Input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              size="lg"
+              disabled={loading}
+              className="w-full"
+            >
+              <span className="flex items-center justify-center gap-2">
+                {loading ? 'Consulting the stars...' : 'Login to Dashboard'}
+                {!loading && <ArrowRight className="w-4 h-4" />}
+              </span>
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-3 bg-white text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="lg"
+              disabled={googleLoading}
+              onClick={handleGoogleLogin}
+              className="w-full"
+            >
+              <span className="flex items-center justify-center gap-2">
+                {googleLoading ? 'Connecting to Google...' : <><FaGoogle className="w-5 h-5" /> Continue with Google</>}
+              </span>
+            </Button>
+          </form>
+
+          <div className="mt-8 pt-8 border-t border-gray-100 text-center">
+            <p className="text-sm text-gray-500">
+              New to the cosmos?{' '}
+              <Link
+                to="/signup"
+                className="font-semibold text-primary-600 hover:text-primary-500 underline decoration-primary-200 underline-offset-4"
+              >
+                Create an account
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-8 text-center text-xs text-gray-400 uppercase tracking-widest">
+          ✨ Trusted by Astrologers Everywhere ✨
+        </p>
+      </div>
+    </div>
   );
 }

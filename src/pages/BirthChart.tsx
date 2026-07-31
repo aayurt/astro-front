@@ -1,22 +1,20 @@
 import axios from 'axios';
-import {
-  Block,
-  BlockTitle,
-  Button,
-  Card,
-  Navbar,
-  Page,
-  Preloader
-} from 'konsta/react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import VedicChart from '../components/VedicChart';
 import { authClient } from '../lib/auth-client';
 import { useAstroStore } from '../store/astroStore';
 
+import { Page } from '../components/ui/page';
+import { Navbar } from '../components/ui/navbar';
+import { Card } from '../components/modern-ui/card';
+import { Button } from '../components/modern-ui/button';
+import { Badge } from '../components/modern-ui/badge';
+import { PageSkeleton } from '../components/Skeleton';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+
 import { ChartData, PanchangData, User } from '../types/api';
 import { ZODIAC_SIGNS } from '../types/constants';
-import { LoadingPlanet } from '../components/LoadingPlanet';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -34,12 +32,12 @@ export default function BirthChartPage() {
     return (
       <Page>
         <Navbar title='Natal Chart' />
-        <LoadingPlanet />
+        <PageSkeleton />
       </Page>
     );
   return (
     <Page>
-      <Block strong className='border border-gray-950/5 p-0 rounded-xl p-4 bg-white m-4'>
+      <div className='p-4'>
         <div className='flex flex-wrap gap-x-8 gap-y-2 text-sm text-gray-700'>
           <div className='flex flex-col'>
             <span className='text-[10px] uppercase tracking-wider text-gray-400 font-bold'>
@@ -68,20 +66,20 @@ export default function BirthChartPage() {
             <span>{user?.location || '-'}</span>
           </div>
         </div>
-      </Block>
+      </div>
       <div className='flex flex-col'>
         <div>
-          <BlockTitle>Natal Chart (D1)</BlockTitle>
+          <h2 className='text-sm font-bold text-gray-500 uppercase tracking-wider px-4 mb-2'>Natal Chart (D1)</h2>
           <Card>
             <VedicChart data={planets} title='D1 North Indian Chart' />
-            <Card className='border border-gray-950/5 p-0 rounded-xl bg-[oklch(0.98_0_0)]'>
+            <div className='p-4 rounded-xl bg-[oklch(0.98_0_0)]'>
               <div className='pb-2 font-bold'>Planet Positions</div>
 
               {planets ? (
                 <div className='overflow-x-auto'>
-                  <table className='w-full text-sm text-left border-gray-950/5 p-0 rounded-xl'>
+                  <table className='w-full text-sm text-left'>
                     <thead>
-                      <tr className='border border-gray-950/5 p-0 rounded-xl'>
+                      <tr className='border border-gray-950/5'>
                         <th className='p-2 font-semibold text-gray-600'>Planet</th>
                         <th className='p-2 font-semibold text-gray-600'>Degree</th>
                         <th className='p-2 font-semibold text-gray-600'>Sign</th>
@@ -89,21 +87,16 @@ export default function BirthChartPage() {
                         <th className='p-2 font-semibold text-gray-600'>Nakshatra</th>
                         <th className='p-2 font-semibold text-gray-600'>N. Lord</th>
                         <th className='p-2 font-semibold text-gray-600'>House</th>
-                        <th className='p-2 font-semibold text-gray-600 text-center'>
-                          R
-                        </th>
-                        <th className='p-2 font-semibold text-gray-600 text-center'>
-                          C
-                        </th>
+                        <th className='p-2 font-semibold text-gray-600 text-center'>R</th>
+                        <th className='p-2 font-semibold text-gray-600 text-center'>C</th>
                       </tr>
                     </thead>
-                    <tbody className='bg-white  '>
+                    <tbody className='bg-white'>
                       {(() => {
                         const sun = planets?.Sun;
                         const sunDegree = sun?.fullDegree || 0;
                         return Object.entries(planets).map(([key, planet]) => {
                           const zodiacSigns = ZODIAC_SIGNS;
-                          // Combustion calculation
                           const thresholds: Record<string, number> = {
                             Moon: 12,
                             Mars: 17,
@@ -170,39 +163,33 @@ export default function BirthChartPage() {
                   Planet data not available
                 </p>
               )}
-            </Card>
+            </div>
           </Card>
         </div>
         <div>
-
-          <BlockTitle>Navamsa Chart (D9)</BlockTitle>
+          <h2 className='text-sm font-bold text-gray-500 uppercase tracking-wider px-4 mb-2'>Navamsa Chart (D9)</h2>
           <Card>
             <VedicChart data={d9Chart} title='D9 North Indian Chart' />
-            <Card className='border border-gray-950/5 p-0 rounded-xl bg-[oklch(0.98_0_0)]'>
+            <div className='p-4 rounded-xl bg-[oklch(0.98_0_0)]'>
               <div className='pb-2 font-bold'>Planet Positions</div>
 
               {d9Chart ? (
                 <div className='overflow-x-auto'>
-                  <table className='w-full text-sm text-left border-gray-950/5 p-0 rounded-xl'>
+                  <table className='w-full text-sm text-left'>
                     <thead>
-                      <tr className='border border-gray-950/5 p-0 rounded-xl'>
+                      <tr className='border border-gray-950/5'>
                         <th className='p-2 font-semibold text-gray-600'>Planet</th>
                         <th className='p-2 font-semibold text-gray-600'>Sign</th>
                         <th className='p-2 font-semibold text-gray-600 text-center'>House</th>
-                        <th className='p-2 font-semibold text-gray-600 text-center'>
-                          R
-                        </th>
+                        <th className='p-2 font-semibold text-gray-600 text-center'>R</th>
                       </tr>
                     </thead>
-                    <tbody className='bg-white  '>
+                    <tbody className='bg-white'>
                       {(() => {
-                        // Assuming combustion is physical, so we use Sun from D1 chart if possible
-                        // But for simplicity in D9, we'll try to find Sun in D9 as well if it exists
                         const sun = d9Chart?.Sun || planets?.Sun;
                         const sunDegree = sun?.fullDegree || 0;
                         return Object.entries(d9Chart).map(([key, planet]) => {
                           const zodiacSigns = ZODIAC_SIGNS;
-                          // Combustion calculation
                           const thresholds: Record<string, number> = {
                             Moon: 12,
                             Mars: 17,
@@ -245,62 +232,8 @@ export default function BirthChartPage() {
                   Planet data not available
                 </p>
               )}
-            </Card>
+            </div>
           </Card>
-
-          {/* <BlockTitle>Panchang Details (Vedic Astrology)</BlockTitle>
-      <Block strong inset>
-        {panchang ? (
-          <div className='grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-2 text-sm'>
-            <div className='flex flex-col'>
-              <span className='text-[10px] uppercase tracking-wider text-gray-400 font-bold'>
-                Tithi
-              </span>
-              <span>{panchang.tithi?.name || '-'}</span>
-            </div>
-            <div className='flex flex-col'>
-              <span className='text-[10px] uppercase tracking-wider text-gray-400 font-bold'>
-                Nakshatra
-              </span>
-              <span>{panchang.nakshatra?.name || '-'}</span>
-            </div>
-            <div className='flex flex-col'>
-              <span className='text-[10px] uppercase tracking-wider text-gray-400 font-bold'>
-                Yoga
-              </span>
-              <span>{panchang.yoga?.name || '-'}</span>
-            </div>
-            <div className='flex flex-col'>
-              <span className='text-[10px] uppercase tracking-wider text-gray-400 font-bold'>
-                Karana
-              </span>
-              <span>{panchang.karana?.name || '-'}</span>
-            </div>
-            <div className='flex flex-col'>
-              <span className='text-[10px] uppercase tracking-wider text-gray-400 font-bold'>
-                Weekday
-              </span>
-              <span>{panchang.weekday?.vedic_weekday_name || '-'}</span>
-            </div>
-            <div className='flex flex-col'>
-              <span className='text-[10px] uppercase tracking-wider text-gray-400 font-bold'>
-                Sunrise
-              </span>
-              <span>{panchang.sun_rise || '-'}</span>
-            </div>
-            <div className='flex flex-col'>
-              <span className='text-[10px] uppercase tracking-wider text-gray-400 font-bold'>
-                Sunset
-              </span>
-              <span>{panchang.sun_set || '-'}</span>
-            </div>
-          </div>
-        ) : (
-          <p className='text-center text-gray-400 italic py-2'>
-            Panchang data not available
-          </p>
-        )}
-      </Block> */}
         </div>
       </div>
     </Page>

@@ -1,17 +1,4 @@
 import {
-  BlockTitle,
-  Button,
-  Icon,
-  List,
-  ListItem,
-  Message,
-  Messagebar,
-  Messages,
-  Navbar,
-  Page,
-  Preloader,
-} from 'konsta/react';
-import {
   Bot,
   MenuIcon,
   MessageSquare,
@@ -26,8 +13,15 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { LoadingPlanet } from '../components/LoadingPlanet';
+import { Page } from '../components/ui/page';
+import { Navbar } from '../components/ui/navbar';
+import { Button } from '../components/modern-ui/button';
+import { Badge } from '../components/modern-ui/badge';
+import { Sheet, SheetContent, SheetTrigger } from '../components/modern-ui/sheet';
+import { Tooltip } from '../components/modern-ui/tooltip';
 import apiClient from '../lib/api-client';
 import { ChatMessage, useChatStore } from '../store/chatStore';
+import { useAstroStore } from '../store/astroStore';
 
 const formatMessageTime = (timeStr: string): string => {
   const [hours, minutes] = timeStr.replace(/[APM\s]/g, '').split(':').map(Number);
@@ -98,7 +92,7 @@ const formatMessageText = (text: string) => {
     },
     {
       key: 'Lal Kitab Remedies:',
-      icon: <Zap className='w-4 h-4 text-indigo-500 inline mr-1' />,
+      icon: <Zap className='w-4 h-4 text-primary-500 inline mr-1' />,
     },
     {
       key: 'Mantras:',
@@ -122,7 +116,7 @@ const formatMessageText = (text: string) => {
                 className='mt-4 mb-2 flex items-center bg-gray-50/50 p-2 rounded-lg border border-gray-100'
               >
                 {icon}
-                <span className='font-bold text-indigo-900 text-xs uppercase tracking-wider'>
+                <span className='font-bold text-primary-900 text-xs uppercase tracking-wider'>
                   {key}
                 </span>
               </div>,
@@ -161,7 +155,7 @@ export default function AIPage() {
     addMessageToConversation,
   } = useChatStore();
 
-  const [coins, setCoins] = useState<number>(0);
+  const { coins, fetchCoinStatus } = useAstroStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -237,18 +231,9 @@ export default function AIPage() {
     }
   }, [id, hydrated]);
 
-  const fetchCoins = async () => {
-    try {
-      const res = await apiClient.get('/api/user/coins');
-      setCoins(res.data.coins);
-    } catch (err) {
-      console.error('Error fetching coins', err);
-    }
-  };
-
   useEffect(() => {
     if (hydrated) {
-      fetchCoins();
+      fetchCoinStatus();
       fetchConversations(); // Use cache on mount
     }
   }, [hydrated]);
@@ -288,9 +273,10 @@ export default function AIPage() {
     }
 
     try {
+      const store = useAstroStore.getState();
       const res = await apiClient.post(
         '/api/ai/chat6',
-        { message: text, conversationId: activeConversationId },
+        { message: text, conversationId: activeConversationId, profileId: store.activeProfileId },
         { timeout: 180000 }, // Wait for 180 seconds
       );
 
@@ -309,7 +295,7 @@ export default function AIPage() {
         addMessageToConversation(res.data.conversationId, newMessage);
         addMessageToConversation(res.data.conversationId, aiMessage);
       }
-      setCoins(res.data.coinsLeft);
+      useAstroStore.setState({ coins: res.data.coinsLeft });
       setLoading(false);
       fetchConversations(true); // Always refresh the conversation list to update titles/timestamps
 
@@ -346,47 +332,46 @@ export default function AIPage() {
     <Page>
       <Navbar
         title='AI Guru'
-        className=''
         left={
           <Button
-            clear
+            variant="ghost"
+            size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className='p-2!'
           >
             <MenuIcon
               size={20}
-              className={sidebarOpen ? 'text-indigo-600' : 'text-gray-400'}
+              className={sidebarOpen ? 'text-primary-600' : 'text-gray-400'}
             />
           </Button>
         }
         right={
-          <div className='flex items-center gap-2 mr-2'>
+          <div className='flex items-center gap-2'>
             {loading && (
-              <Preloader className='w-4 h-4' />
+              <div className='w-4 h-4 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin' />
             )}
             <Button
-              clear
+              variant="ghost"
+              size="icon"
               onClick={() => {
                 if (id) {
                   fetchMessages(id);
                 } else {
                   fetchConversations(true);
                 }
-                fetchCoins();
+                fetchCoinStatus();
               }}
-              className='p-2!'
             >
               <RefreshCw
                 size={20}
-                className='text-gray-400 active:text-indigo-600 transition-colors'
+                className='text-gray-400 active:text-primary-600 transition-colors'
               />
             </Button>
-            <span className='inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 inset-ring inset-ring-yellow-600/20 whitespace-nowrap'>
+            <span className='inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-yellow-600/20 whitespace-nowrap'>
               🪙 {coins} Coins
             </span>
           </div>
         }
-      ></Navbar>
+      />
 
       <div className='flex h-[calc(100vh-160px)] overflow-hidden relative'>
         {/* Sidebar Overlay (Mobile only) */}
@@ -403,11 +388,12 @@ export default function AIPage() {
           fixed md:relative z-50 md:z-auto h-full
           ${sidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'}
           border-r border-gray-100 bg-white md:bg-gray-50/50 flex flex-col overflow-hidden
+          transition-all duration-200
         `}
         >
-          <div className='p-4'>
+          <div className='p-4 shrink-0'>
             <Button
-              outline
+              variant="outline"
               className='w-full flex items-center justify-center gap-2'
               onClick={() => {
                 startNewChat();
@@ -418,172 +404,144 @@ export default function AIPage() {
             </Button>
           </div>
 
-          <div className='flex-1 min-w-0'>
-            <BlockTitle className='m-0! px-4 py-2 uppercase text-[10px] font-bold tracking-wider text-gray-400'>
+          <div className='flex-1 min-w-0 flex flex-col overflow-hidden'>
+            <div className='px-4 py-2 uppercase text-[10px] font-bold tracking-wider text-gray-400 shrink-0'>
               Recent Chats
-            </BlockTitle>
+            </div>
             {loadingHistory ? (
               <div className='flex justify-center py-4'>
-                <Preloader className='w-5 h-5' />
+                <div className='w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin' />
               </div>
             ) : (
-              <List strongIos insetIos className='m-2! h-full overflow-y-auto'>
-                {conversations.map((conv) => (
-                  <ListItem
-                    key={conv.id}
-                    link
-                    title={
-                      <div className='text-xs truncate w-full block flex items-center gap-2'>
-                        {conv.title}
-                        {loadingByConversation[conv.id] && (
-                          <Preloader className='w-3 h-3' />
-                        )}
-                      </div>
-                    }
-                    onClick={() => {
-                      navigate(`/ai/${conv.id}`);
-                      if (window.innerWidth < 768) setSidebarOpen(false);
-                    }}
-                    className={`${activeConversationId === conv.id ? 'bg-indigo-50' : ''} overflow-hidden`}
-                    media={
-                      <div className='shrink-0'>
-                        <MessageSquare
-                          size={14}
-                          className={
-                            activeConversationId === conv.id
-                              ? 'text-indigo-600'
-                              : 'text-gray-400'
-                          }
-                        />
-                      </div>
-                    }
-                  />
-                ))}
-                {conversations.length === 0 && (
-                  <div className='px-4 py-8 text-center text-gray-400 text-xs italic'>
-                    No history yet
-                  </div>
-                )}
-              </List>
+              <div className='flex-1 overflow-y-auto'>
+                <div className='space-y-0.5 px-2 pb-2'>
+                  {conversations.map((conv) => (
+                    <div
+                      key={conv.id}
+                      onClick={() => {
+                        navigate(`/ai/${conv.id}`);
+                        if (window.innerWidth < 768) setSidebarOpen(false);
+                      }}
+                      className={`flex items-center gap-2 p-3 cursor-pointer text-sm rounded-lg transition-colors ${
+                        activeConversationId === conv.id
+                          ? 'bg-primary-50 text-primary-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <MessageSquare size={14} className="shrink-0" />
+                      <span className="truncate flex-1">{conv.title}</span>
+                      {loadingByConversation[conv.id] && (
+                        <div className='w-3 h-3 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin shrink-0' />
+                      )}
+                    </div>
+                  ))}
+                  {conversations.length === 0 && (
+                    <div className='px-4 py-8 text-center text-gray-400 text-xs italic'>
+                      No history yet
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
 
         {/* Chat Area */}
         <div className='flex-1 flex flex-col min-w-0 bg-white'>
-          <div className='flex-1 overflow-y-auto p-4'>
-            <Messages>
-              {messages.length === 0 && !loading && !id && (
-                <div className='flex flex-col items-center justify-center h-full text-center opacity-50 px-10'>
-                  <div className='w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-indigo-100/50'>
-                    <Bot size={36} className='text-indigo-600' />
-                  </div>
-                  <h3 className='text-2xl font-semibold text-gray-800 tracking-wide'>
-                    Vedic Astrology AI
-                  </h3>
-                  <p className='text-base mt-3 text-gray-600'>
-                    Ask me about your chart, dashas, or current transits.
-                  </p>
-                  <p className='text-[11px] mt-5 tracking-widest uppercase text-indigo-400 font-medium'>
-                    Each question uses 1 coin
-                  </p>
+          <div className='flex-1 overflow-y-auto p-4 space-y-4'>
+            {messages.length === 0 && !loading && !id && (
+              <div className='flex flex-col items-center justify-center h-full text-center opacity-50 px-10'>
+                <div className='w-20 h-20 bg-gradient-to-br from-primary-100 to-purple-100 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-primary-100/50'>
+                  <Bot size={36} className='text-primary-600' />
                 </div>
-              )}
-              {messages.map((msg, index) => {
-                return (
-                  <Message
-                    key={index}
-                    type={msg.type}
-                    name={msg.name}
-                    text={formatMessageText(msg.text)}
-                    footer={
-                      <div
-                        className={`text-xs text-gray-400 flex items-center justify-between ${msg.type !== 'received' ? 'justify-end' : 'justify-between'} mt-1`}
+                <h3 className='text-2xl font-semibold text-gray-800 tracking-wide'>
+                  Vedic Astrology AI
+                </h3>
+                <p className='text-base mt-3 text-gray-600'>
+                  Ask me about your chart, dashas, or current transits.
+                </p>
+                <p className='text-[11px] mt-5 tracking-widest uppercase text-primary-400 font-medium'>
+                  Each question uses 1 coin
+                </p>
+              </div>
+            )}
+            {messages.map((msg, index) => (
+              <div key={index} className={`flex ${msg.type === 'sent' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                  msg.type === 'sent'
+                    ? 'bg-primary-600 text-white rounded-br-md'
+                    : 'bg-gray-100 text-gray-900 rounded-bl-md'
+                }`}>
+                  <div className={`text-sm ${/<[a-z][\s\S]*>/i.test(msg.text) ? '' : 'whitespace-pre-wrap'}`}>
+                    {formatMessageText(msg.text)}
+                  </div>
+                  <div className={`flex items-center ${msg.type === 'received' ? 'justify-between' : 'justify-end'} gap-2 mt-1`}>
+                    <span className={`text-[10px] ${msg.type === 'sent' ? 'text-primary-200' : 'text-gray-400'}`}>
+                      {msg.time ? formatMessageTime(msg.time) : "NaN"}
+                    </span>
+                    {msg.type === 'received' && (
+                      <button
+                        onClick={() => speakMessage(msg.text)}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        aria-label="Speak message"
                       >
-                        <span>{msg.time ? formatMessageTime(msg.time) : "NaN"}</span>
-                        {msg.type === 'received' && (
-                          <button
-                            onClick={() => speakMessage(msg.text)}
-                            className="p-1 hover:bg-indigo-50 rounded transition-colors ml-2"
-                            aria-label="Speak message"
-                          >
-                            <Volume2 size={20} className={isSpeaking ? 'text-indigo-600' : 'text-gray-400'} />
-                          </button>
-                        )}
+                        <Volume2 size={14} className={isSpeaking ? 'text-primary-600' : 'text-gray-400'} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {/* Loading indicator in chat */}
+            {loading && (
+              <div className="flex justify-start">
+                <div className="max-w-[80%] rounded-2xl px-4 py-2.5 bg-gray-100 text-gray-900 rounded-bl-md">
+                  <div className="flex flex-col items-center justify-center py-4 space-y-3">
+                    <div className="relative">
+                      <div className="w-10 h-10 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Sparkles size={14} className="text-primary-600 animate-pulse" />
                       </div>
-                    }
-                    colors={
-                      {
-                        bubbleReceivedMd: 'bg-[#f4f5f7] text-[#1f1f1f] tracking-wide',
-                        bubbleReceivedIos: 'bg-[#f4f5f7] text-[#1f1f1f] tracking-wide',
-                        bubbleSentMd: 'bg-[#e9eef6] text-[#1f1f1f] tracking-wide',
-                        bubbleSentIos: 'bg-[#e9eef6] text-[#1f1f1f] tracking-wide',
-                      }
-                    }
-                    className={`mb-4 py-2 ${/<[a-z][\s\S]*>/i.test(msg.text) ? '' : 'whitespace-pre-wrap'}`}
-                  />
-                );
-              })}
-              {/* Loading indicator in chat */}
-              {loading && (
-                <Message
-                  type="received"
-                  name="Astro AI"
-                  text={
-                    <div className="flex flex-col items-center justify-center py-4 space-y-3">
-                      <div className="relative">
-                        <div className="w-10 h-10 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Sparkles size={14} className="text-indigo-600 animate-pulse" />
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 text-center max-w-[200px] animate-pulse">
-                        {loadingMessages[loadingStep]}
-                      </p>
                     </div>
-                  }
-                  colors={{
-                    bubbleReceivedMd: 'bg-[#f4f5f7] text-[#1f1f1f] tracking-wide',
-                    bubbleReceivedIos: 'bg-[#f4f5f7] text-[#1f1f1f] tracking-wide',
-                  }}
-                  className="mb-4 py-2"
-                />
-              )}
-              <div ref={messagesEndRef} />
-            </Messages>
+                    <p className="text-xs text-gray-500 text-center max-w-[200px] animate-pulse">
+                      {loadingMessages[loadingStep]}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
-          <Messagebar
-            placeholder={coins > 0 ? 'Ask about your chart...' : 'Insufficient coins'}
-            value={messageText}
-            onInput={(e: any) => {
-              setMessageText(e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            onKeyDown={(e: any) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-              }
-            }}
-            disabled={coins <= 0}
-            className='border-t border-gray-100 relative rounded-md shadow-md md:shadow-lg [&_textarea]:resize-none [&_textarea]:max-h-48'
-            right={
+          <div className="border-t border-gray-200 p-3 bg-white">
+            <div className="flex items-end gap-2 max-w-4xl mx-auto">
+              <textarea
+                value={messageText}
+                onChange={(e) => {
+                  setMessageText(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${e.target.scrollHeight}px`;
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+                placeholder={coins > 0 ? 'Ask about your chart...' : 'Insufficient coins'}
+                disabled={coins <= 0}
+                rows={1}
+                className="flex-1 resize-none rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 max-h-48"
+              />
               <Button
-                clear
-                className='text-indigo-600 font-bold'
                 onClick={sendMessage}
                 disabled={!messageText.trim() || coins <= 0 || loading}
+                size="icon"
+                className="shrink-0 h-10 w-10 rounded-xl"
               >
-                <Icon
-                  ios={<Send className={`w-7 h-7`} />}
-                  material={
-                    <Send className='w-6 h-6 fill-black dark:fill-md-dark-on-surface' />
-                  }
-                />
+                <Send className="w-5 h-5" />
               </Button>
-            }
-          />
+            </div>
+          </div>
         </div>
       </div>
     </Page>

@@ -16,21 +16,24 @@ const ProtectedRoute = () => {
   } = useAstroStore();
   const { fetchConversations, hydrated: chatHydrated } = useChatStore();
 
+  const token = session?.session?.token;
+  const sessionUserId = session?.user?.id;
+
   useEffect(() => {
-    if (session?.session?.token) {
+    if (token) {
       if (session.user) {
         updateUser(session.user);
       }
       if (astroHydrated) {
         // Pre-fetch astro data as soon as we have a session
-        fetchAstroData(false, session.session.token);
+        fetchAstroData(false, token);
       }
       if (chatHydrated) {
         // Pre-fetch chat history
         fetchConversations();
       }
     }
-  }, [session, astroHydrated, chatHydrated, fetchAstroData, fetchConversations, updateUser]);
+  }, [token, sessionUserId, astroHydrated, chatHydrated, fetchAstroData, fetchConversations, updateUser]);
 
   if (isPending) {
     return <LoadingPlanet />;

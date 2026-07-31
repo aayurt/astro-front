@@ -3,7 +3,24 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { authClient } from '../lib/auth-client';
 import apiClient from '../lib/api-client';
 import { cacheDB } from '../lib/cache';
-import { ChartData, MahaDasha, YoginiDasha, User } from '../types/api';
+import { ChartData, MahaDasha, YoginiDasha, User, PanchangData, Profile } from '../types/api';
+
+// Cached session token so fetchAstroData doesn't call getSession() on every
+// invocation — each call updates better-auth's session atom, which re-renders
+// ProtectedRoute → updateUser → new user ref → Dashboard effect → fetchAstroData → loop.
+let cachedSessionToken: string | null = null;
+
+function shallowEqual<T extends Record<string, any>>(a: T, b: T): boolean {
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((k) => a[k] === b[k]);
+}
+
+function withProfile(url: string, getActiveProfileId: () => string | null): string {
+  const pId = getActiveProfileId();
+  return pId ? `${url}${url.includes('?') ? '&' : '?'}profileId=${pId}` : url;
+}
 
 const CACHE_TTL = {
   PLANETS: 60 * 60 * 1000,
@@ -15,6 +32,7 @@ const CACHE_TTL = {
   GOCHAR: 60 * 60 * 1000,
   AI_PERSONA: 24 * 60 * 60 * 1000,
   COINS: 5 * 60 * 1000,
+  PANCHANG: 60 * 60 * 1000,
 };
 
 async function cacheFetch<T>(key: string, fetchFn: () => Promise<T>, ttl: number): Promise<{ data: T; fromCache: boolean }> {
@@ -44,6 +62,7 @@ interface AstroState {
   lagnaGochar: ChartData | null;
   chandraGochar: ChartData | null;
   aiPersona: string | null;
+  panchang: PanchangData | null;
   coins: number;
   canClaim: boolean;
   loading: boolean;
@@ -52,7 +71,15 @@ interface AstroState {
   hydrated: boolean;
   error: string | null;
   lastTransitFetch: number | null;
-  fetchAstroData: (force?: boolean, token?: string) => Promise<void>;
+  lastCoinFetch: number | null;
+  profiles: Profile[];
+  activeProfileId: string | null;
+  fetchAstroData: (force?: boolean, token?: string, profileId?: string) => Promise<void>;
+  fetchProfiles: () => Promise<void>;
+  setActiveProfile: (id: string) => void;
+  addProfile: (data: Partial<Profile> & { name: string }) => Promise<void>;
+  updateProfile: (id: string, data: Partial<Profile>) => Promise<void>;
+  deleteProfile: (id: string) => Promise<void>;
   fetchCoinStatus: () => Promise<void>;
   claimDailyCoins: () => Promise<void>;
   fetchTransitData: (force?: boolean) => Promise<void>;
@@ -63,8 +90,10 @@ interface AstroState {
   fetchVimsottariDashas: (force?: boolean) => Promise<void>;
   fetchYoginiDashas: (force?: boolean) => Promise<void>;
   fetchAiPersona: () => Promise<void>;
+  fetchPanchang: () => Promise<void>;
   refreshData: () => Promise<void>;
   updateUserAndRefresh: (userData: Partial<User>) => Promise<void>;
+  recalculateChart: () => Promise<void>;
   clearAstroData: () => void;
   logout: () => Promise<void>;
   setHydrated: (val: boolean) => void;
@@ -85,6 +114,7 @@ export const useAstroStore = create<AstroState>()(
       lagnaGochar: null,
       chandraGochar: null,
       aiPersona: null,
+      panchang: null,
       coins: 0,
       canClaim: false,
       loading: false,
@@ -93,13 +123,81 @@ export const useAstroStore = create<AstroState>()(
       hydrated: false,
       error: null,
       lastTransitFetch: null,
+      lastCoinFetch: null,
+      profiles: [],
+      activeProfileId: null,
 
       setHydrated: (val: boolean) => set({ hydrated: val }),
 
       updateUser: (userData: Partial<User>) => {
         const currentUser = get().user;
         if (currentUser) {
-          set({ user: { ...currentUser, ...userData } });
+          const merged = { ...currentUser, ...userData };
+          if (shallowEqual(currentUser, merged)) return;
+          set({ user: merged });
+        }
+      },
+
+      fetchProfiles: async () => {
+        try {
+          const res = await apiClient.get('/api/user/profiles');
+          const profiles = res.data;
+          set({ profiles });
+          if (!get().activeProfileId && profiles.length > 0) {
+            set({ activeProfileId: profiles[0].id });
+          }
+        } catch (err: any) {
+          console.error('Failed to fetch profiles', err);
+        }
+      },
+
+      setActiveProfile: (id: string) => {
+        set({ activeProfileId: id });
+        const p = get().profiles.find(p => p.id === id);
+        document.documentElement.dataset.primary = p?.color || 'indigo';
+        set({
+          planets: null,
+          d9Chart: null,
+          specialPlanets: null,
+          mahaDashas: [],
+          yoginiDashas: [],
+          transitData: null,
+          myTransitData: null,
+          lagnaGochar: null,
+          chandraGochar: null,
+          panchang: null,
+          error: null,
+        });
+        cacheDB.clear();
+        get().fetchAstroData(true);
+      },
+
+      addProfile: async (data) => {
+        try {
+          const res = await apiClient.post('/api/user/profiles', data);
+          set({ profiles: [...get().profiles, res.data] });
+        } catch (err: any) {
+          console.error('Failed to add profile', err);
+        }
+      },
+
+      updateProfile: async (id, data) => {
+        try {
+          const res = await apiClient.put(`/api/user/profiles/${id}`, data);
+          set({
+            profiles: get().profiles.map((p) => (p.id === id ? res.data : p)),
+          });
+        } catch (err: any) {
+          console.error('Failed to update profile', err);
+        }
+      },
+
+      deleteProfile: async (id) => {
+        try {
+          await apiClient.delete(`/api/user/profiles/${id}`);
+          set({ profiles: get().profiles.filter((p) => p.id !== id) });
+        } catch (err: any) {
+          console.error('Failed to delete profile', err);
         }
       },
 
@@ -117,10 +215,36 @@ export const useAstroStore = create<AstroState>()(
         await cacheDB.delete('astro-d9');
         await cacheDB.delete('astro-maha-dashas');
         await cacheDB.delete('astro-yogini-dashas');
+        await cacheDB.delete('astro-all-transit');
+        await get().fetchAstroData(true);
+      },
+
+      recalculateChart: async () => {
+        set({
+          planets: null,
+          d9Chart: null,
+          specialPlanets: null,
+          mahaDashas: [],
+          yoginiDashas: [],
+          transitData: null,
+          myTransitData: null,
+          lagnaGochar: null,
+          chandraGochar: null,
+          panchang: null,
+          error: null,
+        });
+        await Promise.all([
+          cacheDB.delete('astro-planets'),
+          cacheDB.delete('astro-d9'),
+          cacheDB.delete('astro-maha-dashas'),
+          cacheDB.delete('astro-yogini-dashas'),
+          cacheDB.delete('astro-all-transit'),
+        ]);
         await get().fetchAstroData(true);
       },
 
       clearAstroData: () => {
+        cachedSessionToken = null;
         set({
           user: null,
           planets: null,
@@ -133,14 +257,15 @@ export const useAstroStore = create<AstroState>()(
           lagnaGochar: null,
           chandraGochar: null,
           aiPersona: null,
+          panchang: null,
           coins: 0,
           canClaim: false,
           loading: false,
           backgroundRefreshing: false,
           loadingAiPersona: false,
-          hydrated: false,
           error: null,
           lastTransitFetch: null,
+          lastCoinFetch: null,
         });
         cacheDB.clear();
       },
@@ -156,16 +281,23 @@ export const useAstroStore = create<AstroState>()(
       },
 
       fetchCoinStatus: async () => {
+        const now = Date.now();
+        const lastFetch = get().lastCoinFetch;
+        if (lastFetch && now - lastFetch < CACHE_TTL.COINS) return;
+
+        const cached = await cacheDB.get<{ coins: number; canClaim: boolean }>('astro-coins');
+        if (cached) {
+          set({ coins: cached.coins, canClaim: cached.canClaim });
+        }
+
         try {
           const res = await apiClient.get('/api/user/coins');
-          set({ coins: res.data.coins, canClaim: res.data.canClaim });
+          set({ coins: res.data.coins, canClaim: res.data.canClaim, lastCoinFetch: now });
           cacheDB.set('astro-coins', { coins: res.data.coins, canClaim: res.data.canClaim }, CACHE_TTL.COINS);
         } catch (err: any) {
-          const cached = await cacheDB.get<{ coins: number; canClaim: boolean }>('astro-coins');
-          if (cached) {
-            set({ coins: cached.coins, canClaim: cached.canClaim });
+          if (!cached) {
+            set({ error: err.message || 'Failed to fetch coin status' });
           }
-          set({ error: err.message || 'Failed to fetch coin status' });
         }
       },
 
@@ -185,7 +317,6 @@ export const useAstroStore = create<AstroState>()(
 
       fetchAstroData: async (force = false, token?: string) => {
         if (!force && !get().hydrated) {
-          console.log('Waiting for hydration...');
           return;
         }
 
@@ -194,19 +325,26 @@ export const useAstroStore = create<AstroState>()(
           const now = Date.now();
           const oneHour = 60 * 60 * 1000;
           if (!lastTransitFetch || now - lastTransitFetch > oneHour) {
-            get().fetchTransitData(true);
+            apiClient.get(withProfile('/api/astrology/all-transit', () => get().activeProfileId)).then(r => {
+              cacheDB.set('astro-all-transit', r.data, CACHE_TTL.TRANSIT);
+              set({
+                transitData: r.data.transit,
+                myTransitData: r.data.myTransit,
+                lagnaGochar: r.data.lagnaGochar,
+                chandraGochar: r.data.chandraGochar,
+                lastTransitFetch: Date.now(),
+              });
+            }).catch(() => {});
           }
-          get().fetchCoinStatus();
           return;
         }
 
-        let sessionToken = token;
-        let userData = null;
+        let sessionToken = token || cachedSessionToken;
 
         if (!sessionToken) {
           const session = await authClient.getSession();
-          sessionToken = session?.data?.session?.token;
-          userData = session?.data?.user;
+          sessionToken = session?.data?.session?.token ?? null;
+          if (sessionToken) cachedSessionToken = sessionToken;
         }
 
         if (!sessionToken) {
@@ -224,78 +362,58 @@ export const useAstroStore = create<AstroState>()(
         if (allCached && !force) {
           const specialPlanets = calculateSpecialPlanets(cachedPlanets!);
           set({
-            user: { ...(get().user || {}), ...(userData || {}) },
             planets: cachedPlanets,
             d9Chart: cachedD9,
             specialPlanets,
             mahaDashas: cachedMaha!,
             yoginiDashas: cachedYogini!,
-            backgroundRefreshing: true,
-          });
-          get().fetchCoinStatus();
-        } else {
-          set({ loading: !allCached, backgroundRefreshing: false, error: null });
-        }
-
-        try {
-          const results = await Promise.allSettled([
-            apiClient.get('/api/astrology/planets-extended'),
-            apiClient.get('/api/astrology/d9-chart'),
-            apiClient.get('/api/astrology/maha-dashas'),
-            apiClient.get('/api/astrology/yogini-dasha'),
-            apiClient.get('/api/astrology/transit'),
-          ]);
-
-          const errors: string[] = [];
-          const planetsRes = results[0].status === 'fulfilled' ? results[0].value : null;
-          const d9Res = results[1].status === 'fulfilled' ? results[1].value : null;
-          const mahaDashasRes = results[2].status === 'fulfilled' ? results[2].value : null;
-          const yoginiDashasRes = results[3].status === 'fulfilled' ? results[3].value : null;
-          const transitRes = results[4].status === 'fulfilled' ? results[4].value : null;
-
-          if (!planetsRes) {
-            results.forEach((r, i) => {
-              if (r.status === 'rejected') {
-                errors.push(`Request ${i + 1}: ${r.reason?.message || r.reason || 'unknown'}`);
-              }
-            });
-            if (!allCached) {
-              set({ loading: false, error: errors.join('; ') || 'Failed to fetch planets data' });
-            }
-            return;
-          }
-
-          const natal = planetsRes.data;
-          const specialPlanets = calculateSpecialPlanets(natal);
-
-          await Promise.all([
-            cacheDB.set('astro-planets', natal, CACHE_TTL.PLANETS),
-            cacheDB.set('astro-d9', d9Res?.data, CACHE_TTL.D9),
-            cacheDB.set('astro-maha-dashas', mahaDashasRes?.data || [], CACHE_TTL.MAHA_DASHAS),
-            cacheDB.set('astro-yogini-dashas', yoginiDashasRes?.data || [], CACHE_TTL.YOGINI_DASHAS),
-          ]);
-
-          set({
-            user: { ...(get().user || {}), ...(userData || {}) },
-            planets: natal,
-            d9Chart: d9Res?.data ?? get().d9Chart,
-            specialPlanets,
-            mahaDashas: mahaDashasRes?.data ?? get().mahaDashas,
-            yoginiDashas: yoginiDashasRes?.data ?? get().yoginiDashas,
-            transitData: transitRes?.data ?? get().transitData,
-            loading: false,
             backgroundRefreshing: false,
           });
+          return;
+        }
 
-          if (errors.length > 0) {
-            console.warn('Partial fetch — some requests failed:', errors);
-          }
-          get().fetchCoinStatus();
+        set({ loading: true, backgroundRefreshing: false, error: null });
+
+        try {
+          // Phase 1: Planets only — critical for first paint
+          const planetsRes = await apiClient.get(withProfile('/api/astrology/planets-extended', () => get().activeProfileId));
+          const natal = planetsRes.data;
+          const special = calculateSpecialPlanets(natal);
+          set({ planets: natal, specialPlanets: special, loading: false });
+          await cacheDB.set('astro-planets', natal, CACHE_TTL.PLANETS);
+
+          // Phase 2: Secondary data — d9, maha, yogini (stream as they arrive)
+          Promise.allSettled([
+            apiClient.get(withProfile('/api/astrology/d9-chart', () => get().activeProfileId)).then(async r => {
+              await cacheDB.set('astro-d9', r.data, CACHE_TTL.D9);
+              set({ d9Chart: r.data });
+            }),
+            apiClient.get(withProfile('/api/astrology/maha-dashas', () => get().activeProfileId)).then(async r => {
+              const data = r.data || [];
+              await cacheDB.set('astro-maha-dashas', data, CACHE_TTL.MAHA_DASHAS);
+              set({ mahaDashas: data });
+            }),
+            apiClient.get(withProfile('/api/astrology/yogini-dasha', () => get().activeProfileId)).then(async r => {
+              const data = r.data || [];
+              await cacheDB.set('astro-yogini-dashas', data, CACHE_TTL.YOGINI_DASHAS);
+              set({ yoginiDashas: data });
+            }),
+          ]).then(() => set({ backgroundRefreshing: false }));
+
+          // Phase 3: Fire-and-forget (transit cache)
+          apiClient.get(withProfile('/api/astrology/all-transit', () => get().activeProfileId)).then(r => {
+            cacheDB.set('astro-all-transit', r.data, CACHE_TTL.TRANSIT);
+            set({
+              transitData: r.data.transit,
+              myTransitData: r.data.myTransit,
+              lagnaGochar: r.data.lagnaGochar,
+              chandraGochar: r.data.chandraGochar,
+              lastTransitFetch: Date.now(),
+            });
+          }).catch(() => {});
         } catch (err: any) {
           console.error('Error fetching astro data', err);
-          if (!allCached) {
-            set({ error: err.message || 'Failed to fetch astrology data', loading: false, backgroundRefreshing: false });
-          }
+          set({ error: err.message || 'Failed to fetch astrology data', loading: false, backgroundRefreshing: false });
         }
       },
 
@@ -334,7 +452,7 @@ export const useAstroStore = create<AstroState>()(
 
         set({ loading: true, error: null });
         try {
-          const res = await apiClient.get('/api/astrology/all-transit');
+          const res = await apiClient.get(withProfile('/api/astrology/all-transit', () => get().activeProfileId));
           await cacheDB.set('astro-all-transit', res.data, CACHE_TTL.TRANSIT);
           set({
             transitData: res.data.transit,
@@ -364,7 +482,7 @@ export const useAstroStore = create<AstroState>()(
         }
 
         try {
-          const res = await apiClient.get('/api/astrology/maha-dashas');
+          const res = await apiClient.get(withProfile('/api/astrology/maha-dashas', () => get().activeProfileId));
           await cacheDB.set('astro-maha-dashas', res.data, CACHE_TTL.MAHA_DASHAS);
           set({ mahaDashas: res.data, loading: false });
         } catch (err: any) {
@@ -385,12 +503,29 @@ export const useAstroStore = create<AstroState>()(
         }
 
         try {
-          const res = await apiClient.get('/api/astrology/yogini-dasha');
+          const res = await apiClient.get(withProfile('/api/astrology/yogini-dasha', () => get().activeProfileId));
           await cacheDB.set('astro-yogini-dashas', res.data, CACHE_TTL.YOGINI_DASHAS);
           set({ yoginiDashas: res.data, loading: false });
         } catch (err: any) {
           if (!cached) {
             set({ error: err.message || 'Failed to fetch Yogini dashas', loading: false });
+          }
+        }
+      },
+
+      fetchPanchang: async () => {
+        const cached = await cacheDB.get<PanchangData>('astro-panchang');
+        if (cached) {
+          set({ panchang: cached });
+        }
+
+        try {
+          const res = await apiClient.get(withProfile('/api/astrology/panchang', () => get().activeProfileId));
+          set({ panchang: res.data });
+          cacheDB.set('astro-panchang', res.data, CACHE_TTL.PANCHANG);
+        } catch (err: any) {
+          if (!cached) {
+            set({ error: err.message || 'Failed to fetch panchang' });
           }
         }
       },
@@ -421,8 +556,22 @@ export const useAstroStore = create<AstroState>()(
     {
       name: 'astro-storage',
       storage: createJSONStorage(() => localStorage),
+      // Bumped after the chart computation schema fix: drop stale chart data so it
+      // recomputes, but keep user/profiles/coins.
+      version: 2,
+      migrate: (persisted: any) => {
+        const stale = ['planets', 'd9Chart', 'mahaDashas', 'yoginiDashas', 'aiPersona', 'panchang', 'specialPlanets'];
+        if (!persisted || typeof persisted !== 'object') return {};
+        const next = { ...persisted };
+        for (const key of stale) delete next[key];
+        return next;
+      },
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
+        if (state?.activeProfileId && state?.profiles.length) {
+          const p = state.profiles.find(p => p.id === state.activeProfileId);
+          document.documentElement.dataset.primary = p?.color || 'indigo';
+        }
         cacheDB.delete('astro-transit');
         cacheDB.delete('astro-my-transit');
         cacheDB.delete('astro-lagna-gochar');
@@ -437,8 +586,12 @@ export const useAstroStore = create<AstroState>()(
         mahaDashas: state.mahaDashas,
         yoginiDashas: state.yoginiDashas,
         aiPersona: state.aiPersona,
+        panchang: state.panchang,
         coins: state.coins,
         canClaim: state.canClaim,
+        lastCoinFetch: state.lastCoinFetch,
+        profiles: state.profiles,
+        activeProfileId: state.activeProfileId,
       }),
     },
   ),

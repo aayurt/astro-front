@@ -1,44 +1,60 @@
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300;400;500;600;700&display=swap');
-
-@import 'konsta/react/theme.css';
-
 @import 'tailwindcss';
 
+@theme {
+  --color-primary-50: var(--p50);
+  --color-primary-100: var(--p100);
+  --color-primary-200: var(--p200);
+  --color-primary-300: var(--p300);
+  --color-primary-400: var(--p400);
+  --color-primary-500: var(--p500);
+  --color-primary-600: var(--p600);
+  --color-primary-700: var(--p700);
+  --color-primary-800: var(--p800);
+  --color-primary-900: var(--p900);
+}
+
 :root {
-  --font-body: 'Google Sans Flex', 'Google Sans', system-ui, -apple-system, sans-serif;
-  line-height: 1.625rem;
+  --p50: #eef2ff;
+  --p100: #e0e7ff;
+  --p200: #c7d2fe;
+  --p300: #a5b4fc;
+  --p400: #818cf8;
+  --p500: #6366f1;
+  --p600: #4f46e5;
+  --p700: #4338ca;
+  --p800: #3730a3;
+  --p900: #312e81;
+}
+
+[data-primary="blue"] {
+  --p50: #eff6ff; --p100: #dbeafe; --p200: #bfdbfe; --p300: #93c5fd; --p400: #60a5fa; --p500: #3b82f6; --p600: #2563eb; --p700: #1d4ed8; --p800: #1e40af; --p900: #1e3a8a;
+}
+[data-primary="emerald"] {
+  --p50: #ecfdf5; --p100: #d1fae5; --p200: #a7f3d0; --p300: #6ee7b7; --p400: #34d399; --p500: #10b981; --p600: #059669; --p700: #047857; --p800: #065f46; --p900: #064e3b;
+}
+[data-primary="amber"] {
+  --p50: #fffbeb; --p100: #fef3c7; --p200: #fde68a; --p300: #fcd34d; --p400: #fbbf24; --p500: #f59e0b; --p600: #d97706; --p700: #b45309; --p800: #92400e; --p900: #78350f;
+}
+[data-primary="rose"] {
+  --p50: #fff1f2; --p100: #ffe4e6; --p200: #fecdd3; --p300: #fda4af; --p400: #fb7185; --p500: #f43f5e; --p600: #e11d48; --p700: #be123c; --p800: #9f1239; --p900: #881337;
+}
+[data-primary="purple"] {
+  --p50: #faf5ff; --p100: #f3e8ff; --p200: #e9d5ff; --p300: #d8b4fe; --p400: #c084fc; --p500: #a855f7; --p600: #9333ea; --p700: #7e22ce; --p800: #6b21a8; --p900: #581c87;
+}
+[data-primary="cyan"] {
+  --p50: #ecfeff; --p100: #cffafe; --p200: #a5f3fc; --p300: #67e8f9; --p400: #22d3ee; --p500: #06b6d4; --p600: #0891b2; --p700: #0e7490; --p800: #155e75; --p900: #164e63;
+}
+[data-primary="orange"] {
+  --p50: #fff7ed; --p100: #ffedd5; --p200: #fed7aa; --p300: #fdba74; --p400: #fb923c; --p500: #f97316; --p600: #ea580c; --p700: #c2410c; --p800: #9a3412; --p900: #7c2d12;
 }
 
 * {
-  font-family: var(--font-body);
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-@layer components {
-  .persona-content h2 {
-    @apply text-lg font-bold mt-6 mb-2 text-indigo-700;
-  }
-  .persona-content p {
-    @apply mb-4 leading-relaxed;
-  }
-  .persona-content table {
-    @apply w-full border-collapse my-6 text-xs;
-  }
-  .persona-content th, .persona-content td {
-    @apply border border-gray-200 p-2 text-left;
-  }
-  .persona-content th {
-    @apply bg-gray-50 font-bold;
-  }
 }
 
 @keyframes fadeIn {
@@ -47,19 +63,14 @@ body {
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(10px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-@keyframes pulse-gentle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
 }
 
 .animate-fade-in {
@@ -68,14 +79,4 @@ body {
 
 .animate-slide-up {
   animation: slideUp 0.3s ease-out forwards;
-}
-
-/* AI Chat Message Styling */
-.k-message[k-type='received'] .k-message-bubble {
-  background: linear-gradient(135deg, #f8f7ff 0%, #f0effe 100%);
-  border: 1px solid rgba(99, 102, 241, 0.1);
-}
-
-.k-message[k-type='received'] .k-message-content {
-  line-height: 1.6;
 }

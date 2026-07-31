@@ -1,18 +1,16 @@
-import {
-  Block,
-  BlockTitle,
-  Button,
-  Card,
-  Navbar,
-  Page,
-  Popup,
-} from 'konsta/react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { PageSkeleton, CardSkeleton, ListSkeleton } from '../components/Skeleton';
+import { Page } from '../components/ui/page';
+import { Navbar } from '../components/ui/navbar';
+import { Card } from '../components/modern-ui/card';
+import { Button } from '../components/modern-ui/button';
+import { Badge } from '../components/modern-ui/badge';
+import { Dialog, DialogContent } from '../components/modern-ui/dialog';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { PlanetaryHighlights } from '../components/highlights';
-
-import { RefreshCw, X } from 'lucide-react';
-import { LoadingSpinner, PageLoader } from '../components/LoadingSpinner';
 import { PlanetsBirthChartSummary } from '../components/PlanetsBirthChartSummary';
 import { VimsottariDasha } from '../components/VimsottariDasha';
 import { YoginiDasha } from '../components/YoginiDasha';
@@ -33,46 +31,51 @@ export default function DashboardPage() {
     fetchCoinStatus,
     claimDailyCoins,
     fetchAiPersona,
+    fetchProfiles,
     refreshData,
-    loadingAiPersona, // Get the new loading state
+    loadingAiPersona,
+    profiles,
   } = useAstroStore();
 
   const [showPersonaModal, setShowPersonaModal] = React.useState(false);
+  const profilesFetched = React.useRef(false);
 
   React.useEffect(() => {
-    if (user && !user.birthDate) {
-      navigate('/onboarding');
-      return;
+    if (!user) return;
+    if (!profilesFetched.current) {
+      profilesFetched.current = true;
+      fetchProfiles();
     }
-    fetchAstroData();
-  }, [fetchAstroData, user, navigate]);
+  }, [user, fetchProfiles]);
+
   React.useEffect(() => {
-    fetchAiPersona();
-    fetchCoinStatus();
-  }, [fetchCoinStatus]);
+    if (!user || profilesFetched.current !== true) return;
+    if (profiles.length === 0) {
+      navigate('/onboarding');
+    } else {
+      fetchAstroData();
+      fetchCoinStatus();
+    }
+  }, [user, profiles, navigate, fetchAstroData, fetchCoinStatus]);
 
   const handleClaim = async () => {
     if (!canClaim) return;
-    await claimDailyCoins();
+    try {
+      await claimDailyCoins();
+      toast.success('Daily coins claimed!');
+    } catch {
+      toast.error('Failed to claim coins');
+    }
   };
-
-  if (loading && !planets) {
-    return (
-      <Page>
-        <Navbar title='Dashboard' />
-        <PageLoader message="Loading your chart..." />
-      </Page>
-    );
-  }
 
   if (error && error.includes('400')) {
     return (
       <Page>
-        <Navbar title='Dashboard' />
-        <BlockTitle className='text-center mt-8'>
-          Unable to load some chart calculations. Your birth data may need updating.
-        </BlockTitle>
-        <div className='flex justify-center mt-4'>
+        <Navbar title="Dashboard" />
+        <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
+          <p className="text-gray-600 mb-4">
+            Unable to load some chart calculations. Your birth data may need updating.
+          </p>
           <Button onClick={() => navigate('/onboarding')}>
             Update Birth Details
           </Button>
@@ -84,11 +87,9 @@ export default function DashboardPage() {
   if (error) {
     return (
       <Page>
-        <Navbar title='Dashboard' />
-        <BlockTitle className='text-center mt-8 text-red-500'>
-          {error}
-        </BlockTitle>
-        <div className='flex justify-center mt-4'>
+        <Navbar title="Dashboard" />
+        <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
+          <p className="text-red-500 mb-4">{error}</p>
           <Button onClick={() => navigate('/onboarding')}>
             Go to Onboarding
           </Button>
@@ -97,14 +98,14 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user?.birthDate || !user?.latitude) {
+  if (user && profilesFetched.current && profiles.length === 0) {
     return (
       <Page>
-        <Navbar title='Dashboard' />
-        <BlockTitle className='text-center mt-8'>
-          Please complete your birth details to view your dashboard.
-        </BlockTitle>
-        <div className='flex justify-center mt-4'>
+        <Navbar title="Dashboard" />
+        <div className="flex flex-col items-center justify-center flex-1 p-6 text-center">
+          <p className="text-gray-600 mb-4">
+            Please complete your birth details to view your dashboard.
+          </p>
           <Button onClick={() => navigate('/onboarding')}>
             Go to Onboarding
           </Button>
@@ -116,127 +117,143 @@ export default function DashboardPage() {
   return (
     <Page>
       <Navbar
-        title='Dashboard'
-        className=''
+        title="Dashboard"
         right={
-          <div className='flex items-center gap-2 mr-2'>
-            <Button
-              clear
-              onClick={() => {
-                refreshData();
-              }}
-              className='p-2!'
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => refreshData()}
+              className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
             >
               <RefreshCw
                 size={20}
-                className={`text-gray-400 active:text-indigo-600 transition-colors ${loading || backgroundRefreshing ? 'animate-spin' : ''}`}
+                className={loading || backgroundRefreshing ? 'animate-spin' : ''}
               />
-            </Button>
-            <span className='inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 inset-ring inset-ring-yellow-600/20 whitespace-nowrap'>
-              🪙 {coins} Coins
-            </span>
+            </button>
+            <Badge variant="warning">
+              {coins} Coins
+            </Badge>
           </div>
         }
-      ></Navbar>
+      />
 
-      <Card className='border border-gray-300 rounded-lg'>
-        <div className='flex justify-between  flex-col'>
-          <div>
-            Hi {user?.name || 'User'}, Welcome to Astro App! 🙏
-            <p className='mt-2'>
-              Think of me as your personal astrologer and daily confidant. I’m
-              so excited to help you align with the stars and make every day
-              your best one yet! ✨
-            </p>
-            <p className='mt-2'>Happy to help you! 😊</p>
-            <p className='mt-2 text-center'>
-              If any issues, contact: aayurtshrestha@gmail.com
-            </p>
-            <div className='bg-ios-light-surface-1 dark:bg-ios-dark-surface-1 k-card overflow-hidden border border-gray-300 m-0 mt-2 rounded-lg'>
-              <div className='p-1 text-sm'>
-                <p className='m-1'>
-                  You are an{' '}
-                  {planets?.['Ascendant']?.zodiac_sign_name || 'Sign'}{' '}
-                  Ascendant, ruled by{' '}
-                  {planets?.['Ascendant']?.zodiac_sign_lord || 'Sign'} in{' '}
-                  {planets?.['Ascendant']?.nakshatra_name || 'Sign'} (Pada{' '}
-                  {planets?.['Ascendant']?.nakshatra_pada || 'Sign'}).
+      {loading && !planets ? (
+        <PageSkeleton />
+      ) : (
+        <>
+          <div className="px-4 py-3">
+            <Card className="p-4">
+              <div>
+                <p className="text-base font-semibold text-gray-900">
+                  Hi {user?.name || 'User'}, Welcome to Astro App!
                 </p>
-                <div className='p-2'>
-                  <Button
-                    onClick={async () => {
-                      if (!aiPersona) {
-                        await fetchAiPersona();
-                      }
-                      setShowPersonaModal(true);
-                    }}
-                    disabled={loadingAiPersona}
-                  >
-                    {loadingAiPersona
-                      ? 'Analyzing...'
-                      : aiPersona
-                        ? 'Show My Persona'
-                        : 'Analyze My Persona'}
-                  </Button>
-                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                  Think of me as your personal astrologer and daily confidant.
+                </p>
+                <p className="mt-1 text-sm text-gray-600">Happy to help you!</p>
+                {planets && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <p className="text-sm text-gray-700">
+                      You are an{' '}
+                      <span className="font-semibold">
+                        {planets.Ascendant?.zodiac_sign_name || 'Sign'}
+                      </span>{' '}
+                      Ascendant, ruled by{' '}
+                      {planets.Ascendant?.zodiac_sign_lord || '-'} in{' '}
+                      {planets.Ascendant?.nakshatra_name || '-'} (Pada{' '}
+                      {planets.Ascendant?.nakshatra_pada || '-'}).
+                    </p>
+                    <div className="mt-2">
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          if (!aiPersona) {
+                            await fetchAiPersona();
+                          }
+                          setShowPersonaModal(true);
+                        }}
+                        disabled={loadingAiPersona}
+                      >
+                        {loadingAiPersona
+                          ? 'Analyzing...'
+                          : aiPersona
+                            ? 'Show My Persona'
+                            : 'Analyze My Persona'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col items-center mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canClaim}
+                  onClick={handleClaim}
+                >
+                  {canClaim ? 'Claim Daily Coins' : 'Claimed'}
+                </Button>
+                {!canClaim && (
+                  <span className="text-[10px] text-gray-400 mt-1">
+                    Next in 24h
+                  </span>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          <div className="px-4 pb-2">
+            <Card className="p-4">
+              <h2 className="text-lg font-bold text-gray-900">AI Astrologer</h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Ask AI Astrologer questions about your astrology.
+              </p>
+              <Button className="mt-3" onClick={() => navigate('/ai')}>
+                Ask AI
+              </Button>
+            </Card>
+          </div>
+
+          <div className="px-4 pb-2">
+            <Card className="p-4">
+              <h2 className="text-lg font-bold text-gray-900">Remedies</h2>
+              <p className="mt-2 text-sm text-gray-600">
+                View and track mantras, gemstones, and rituals suggested by your AI astrologer.
+              </p>
+              <Button className="mt-3" variant="outline" onClick={() => navigate('/remedies')}>
+                View Remedies
+              </Button>
+            </Card>
+          </div>
+
+          <PlanetaryHighlights />
+
+          {planets ? (
+            <PlanetsBirthChartSummary planets={planets} />
+          ) : (
+            <div className="px-4 py-2 space-y-3">
+              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <CardSkeleton />
+                <CardSkeleton />
               </div>
             </div>
-          </div>
-          <div className='flex flex-col items-center mt-4'>
-            <Button
-              outline
-              disabled={!canClaim || loading}
-              onClick={handleClaim}
-              className='text-xs'
-            >
-              {loading
-                ? 'Claiming...'
-                : canClaim
-                  ? '🎁 Claim Daily'
-                  : '✅ Claimed'}
-            </Button>
-            {!canClaim && (
-              <span className='text-[10px] text-gray-400 mt-1'>
-                Next in 24h
-              </span>
-            )}
-          </div>
-        </div>
-      </Card>
-      <Card className='border border-gray-300 rounded-lg'>
-        <div>
-          <h2 className='text-2xl font-bold'>AI Astrologer</h2>
-          <p className='mt-4'>
-            Ask AI Astrologer questions about your astrology.
-          </p>
-          <Button href='/ai' className='mt-2'>
-            Ask AI
-          </Button>
-        </div>
-      </Card>
-      <PlanetaryHighlights />
-      {planets && <PlanetsBirthChartSummary planets={planets} />}
-      <VimsottariDasha />
-      <YoginiDasha />
+          )}
 
-      <Popup
-        opened={showPersonaModal}
-        onBackdropClick={() => setShowPersonaModal(false)}
-      >
-        <Page>
-          <Navbar
-            title='My Astrological Persona'
-            right={
-              <Button clear onClick={() => setShowPersonaModal(false)}>
-                <X size={20} />
-              </Button>
-            }
-          />
-          <Block className='text-sm text-gray-700 leading-relaxed persona-content'>
-            <div dangerouslySetInnerHTML={{ __html: aiPersona || '' }} />
-          </Block>
-        </Page>
-      </Popup>
+          <VimsottariDasha />
+          <YoginiDasha />
+
+          <Dialog open={showPersonaModal} onOpenChange={setShowPersonaModal}>
+            <DialogContent title="My Astrological Persona">
+              <div className="text-sm text-gray-700 leading-relaxed max-h-[60vh] overflow-y-auto">
+                <div
+                  className="persona-content"
+                  dangerouslySetInnerHTML={{ __html: aiPersona || '' }}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </Page>
   );
 }

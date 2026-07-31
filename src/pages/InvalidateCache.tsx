@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Page, Navbar, Block, BlockTitle, Preloader } from 'konsta/react';
+import { Page } from '../components/ui/page';
+import { Navbar } from '../components/ui/navbar';
 import { useNavigate } from 'react-router-dom';
 
 export default function InvalidateCache() {
@@ -9,11 +10,9 @@ export default function InvalidateCache() {
     const clearCacheAndStorage = async () => {
       console.log('🧹 Manual cache invalidation triggered...');
 
-      // Clear all storage
       localStorage.clear();
       sessionStorage.clear();
 
-      // Clear all browser caches
       if ('caches' in window) {
         const cacheNames = await caches.keys();
         await Promise.all(
@@ -21,7 +20,6 @@ export default function InvalidateCache() {
         );
       }
 
-      // Clear all service worker registrations
       if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
         await Promise.all(
@@ -31,7 +29,6 @@ export default function InvalidateCache() {
 
       console.log('✅ Cache and storage cleared successfully');
 
-      // Short delay before redirecting to home
       setTimeout(() => {
         window.location.href = '/';
       }, 1500);
@@ -44,14 +41,14 @@ export default function InvalidateCache() {
     <Page>
       <Navbar title="Invalidate Cache" />
       <div className="flex flex-col items-center justify-center h-full text-center p-6">
-        <BlockTitle large>Clearing Cache</BlockTitle>
-        <Block strong inset className="flex flex-col items-center gap-4">
-          <Preloader />
+        <h2 className="text-lg font-bold text-gray-900">Clearing Cache</h2>
+        <div className="p-6 flex flex-col items-center gap-4 text-center">
+          <div className="w-10 h-10 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
           <p className="text-gray-500">
             We are clearing all local data and caches to ensure you have the latest version.
             You will be redirected shortly...
           </p>
-        </Block>
+        </div>
       </div>
     </Page>
   );

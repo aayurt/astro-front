@@ -1,19 +1,19 @@
-import { Block, Button } from 'konsta/react';
 import { Download, X } from 'lucide-react';
 import { Outlet } from 'react-router-dom';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import BottomNav from './BottomNav';
 import { PageTransition } from './PageTransition';
+import { ProfileSwitcher } from './ProfileSwitcher';
 
 const MainLayout = () => {
   const { isInstallable, installPWA, dismissPWA } = usePWAInstall();
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <div className="flex-1 overflow-auto relative">
+    <div className="flex flex-col h-screen overflow-hidden bg-white">
+      <div className="flex-1 overflow-y-auto relative">
         {isInstallable && (
-          <div className="fixed top-10 left-4 right-4 z-[9999]">
-            <Block strong inset className="bg-indigo-600 text-white m-0 flex items-center justify-between p-4 shadow-xl border-none relative">
+          <div className="fixed top-4 left-4 right-4 z-[9999]">
+            <div className="bg-primary-600 text-white rounded-xl p-4 shadow-xl flex items-center justify-between">
               <button
                 onClick={dismissPWA}
                 className="absolute top-2 right-2 p-1 text-white/70 hover:text-white transition-colors"
@@ -21,33 +21,35 @@ const MainLayout = () => {
               >
                 <X size={16} />
               </button>
-
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 p-2 rounded-lg">
                   <Download size={24} />
                 </div>
                 <div>
-                  <div className="font-bold text-base leading-tight">Install Astro Guru</div>
+                  <div className="font-bold text-sm leading-tight">Install Astro Guru</div>
                   <div className="text-xs opacity-90">Access charts faster & use offline</div>
                 </div>
               </div>
-
-              <Button
-                small
-                rounded
-                className="bg-white text-indigo-600 w-auto px-6 font-bold hover:bg-gray-100 shadow-sm mr-4"
+              <button
                 onClick={installPWA}
+                className="bg-white text-primary-600 text-sm font-bold px-5 py-2 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
               >
                 Install
-              </Button>
-            </Block>
+              </button>
+            </div>
           </div>
         )}
+        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-100">
+          <div className="flex items-center justify-between px-4 py-2">
+            <div className="text-sm font-bold text-gray-800">Astro Guru</div>
+            <ProfileSwitcher />
+          </div>
+        </div>
         <PageTransition>
           <Outlet />
         </PageTransition>
       </div>
-      <div className='h-20'>
+      <div className="h-16">
         <BottomNav />
       </div>
     </div>

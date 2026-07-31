@@ -120,6 +120,21 @@ export interface PlanetDetail {
   houses?: string;
 }
 
+export interface Profile {
+  id: string;
+  userId: string;
+  name: string;
+  relation: string;
+  avatar?: string;
+  color?: string;
+  birthDate?: string;
+  birthTime?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
+}
+
 export interface SummaryResponse {
   userId: string;
   birthDetails: {

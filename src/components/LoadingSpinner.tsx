@@ -17,7 +17,7 @@ export const LoadingSpinner = ({ message = 'Loading...', size = 'md' }: LoadingS
       <div
         className={`
           ${sizeClasses[size]}
-          border-indigo-200 border-t-indigo-600 rounded-full animate-spin
+          border-primary-200 border-t-primary-600 rounded-full animate-spin
         `}
       />
       {message && (

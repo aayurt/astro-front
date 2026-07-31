@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Block, BlockTitle, Button, Card, Navbar, Page, Preloader, Segmented, SegmentedButton } from 'konsta/react';
 import { Sparkles } from 'lucide-react';
 import VedicChart from '../components/VedicChart';
 import { useAstroStore } from '../store/astroStore';
 import { ZODIAC_SIGNS } from '../types/constants';
 import { LoadingPlanet } from '../components/LoadingPlanet';
 import apiClient from '../lib/api-client';
+import { Page } from '../components/ui/page';
+import { Navbar } from '../components/ui/navbar';
+import { Card } from '../components/modern-ui/card';
+import { Button } from '../components/modern-ui/button';
+import { Badge } from '../components/modern-ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/modern-ui/tabs';
+import { PageSkeleton } from '../components/Skeleton';
 
 const TABS = [
   { key: 'global', label: 'Global Transit' },
@@ -112,12 +118,12 @@ export default function TransitPage() {
   }, [fetchAllTransitData]);
 
   useEffect(() => {
-    if (hydrated) fetchForTab(activeTab);
+    if (hydrated) fetchForTab();
   }, [hydrated, activeTab, fetchForTab]);
 
   const onTabChange = (tab: Tab) => {
     setSearchParams(tab === 'global' ? {} : { type: tab });
-    fetchForTab(tab);
+    fetchForTab();
   };
 
   const activeData = activeTab === 'global' ? transitData
@@ -166,35 +172,39 @@ export default function TransitPage() {
       <Navbar title="Planet Transits" />
 
       <div className='px-4 pt-2 pb-1'>
-        <Segmented>
+        <div className="inline-flex rounded-lg bg-gray-100 p-1 w-full">
           {TABS.map((t) => (
-            <SegmentedButton
+            <button
               key={t.key}
-              active={activeTab === t.key}
               onClick={() => onTabChange(t.key)}
+              className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                activeTab === t.key
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
               {t.label}
-            </SegmentedButton>
+            </button>
           ))}
-        </Segmented>
+        </div>
       </div>
 
       {(loading && !activeData) ? (
         <LoadingPlanet />
       ) : error ? (
-        <Block strong className="text-center text-red-500">
+        <div className="p-4 text-center text-red-500">
           <p>{error}</p>
-        </Block>
+        </div>
       ) : activeData ? (
         <div className="pb-10">
-          <BlockTitle className="m-0! mb-2! uppercase text-xs font-bold tracking-wider text-gray-500 mt-4 px-4">
+          <h2 className="m-0 mb-2 uppercase text-xs font-bold tracking-wider text-gray-500 mt-4 px-4">
             Planetary Positions
-          </BlockTitle>
+          </h2>
 
           <div className="gap-4 px-4">
             <div>
-              <BlockTitle className="!m-0 !mb-2 text-sm font-bold">{tabLabels[activeTab]}</BlockTitle>
-              <Card className="!m-0 mb-4">
+              <h2 className="m-0 mb-2 text-sm font-bold">{tabLabels[activeTab]}</h2>
+              <Card className="m-0 mb-4">
                 <VedicChart data={activeData} title={tabLabels[activeTab]} />
                 <Card className='border border-gray-950/5 p-0 rounded-xl bg-[oklch(0.98_0_0)]'>
                   <div className='pb-2 font-bold'>Planet Positions</div>
@@ -212,7 +222,7 @@ export default function TransitPage() {
                     className='w-full flex items-center justify-center gap-2'
                   >
                     {predictionLoading ? (
-                      <Preloader className='w-4 h-4' />
+                      <div className="w-4 h-4 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                     ) : (
                       <Sparkles className='w-4 h-4' />
                     )}
@@ -224,15 +234,15 @@ export default function TransitPage() {
                   )}
 
                   {activePrediction && (
-                    <Card className='mt-3 !p-3 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 border-indigo-100'>
+                    <Card className='mt-3 p-3 bg-gradient-to-br from-primary-50/50 to-purple-50/50 border-primary-100'>
                       <div className='flex items-center gap-2 mb-2'>
-                        <Sparkles className='w-4 h-4 text-indigo-600' />
-                        <span className='font-bold text-indigo-900 text-xs uppercase tracking-wider'>Prediction</span>
+                        <Sparkles className='w-4 h-4 text-primary-600' />
+                        <span className='font-bold text-primary-900 text-xs uppercase tracking-wider'>Prediction</span>
                       </div>
                       <p className='text-sm text-gray-700 leading-relaxed whitespace-pre-wrap'>{activePrediction.prediction}</p>
 
                       {activePrediction.remedy && activePrediction.remedy !== 'None needed' && (
-                        <div className='mt-3 pt-3 border-t border-indigo-200/50'>
+                        <div className='mt-3 pt-3 border-t border-primary-200/50'>
                           <div className='flex items-center gap-2 mb-1'>
                             <Sparkles className='w-3 h-3 text-amber-500' />
                             <span className='font-bold text-amber-800 text-xs uppercase tracking-wider'>Remedy</span>
@@ -248,9 +258,9 @@ export default function TransitPage() {
           </div>
         </div>
       ) : (
-        <Block strong className="text-center text-gray-500">
+        <div className="p-4 text-center text-gray-500">
           <p>No transit data available</p>
-        </Block>
+        </div>
       )}
     </Page>
   );

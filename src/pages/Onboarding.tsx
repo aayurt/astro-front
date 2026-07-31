@@ -1,5 +1,10 @@
 import React, { useMemo } from 'react';
-import { Page, Navbar, List, ListInput, Button, Block } from 'konsta/react';
+import { Page } from '../components/ui/page';
+import { Navbar } from '../components/ui/navbar';
+import { Input } from '../components/modern-ui/input';
+import { Button } from '../components/modern-ui/button';
+import { Card } from '../components/modern-ui/card';
+import { Badge } from '../components/modern-ui/badge';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../lib/api-client';
 import { authClient } from '../lib/auth-client';
@@ -91,7 +96,6 @@ export default function OnboardingPage() {
     setSearchResults([]);
     setError('');
 
-    // Fetch timezone for the selected location
     setFetchingTimezone(true);
     try {
       const tzRes = await apiClient.post('/api/location/timezone', {
@@ -102,7 +106,6 @@ export default function OnboardingPage() {
       setTimezoneName(tzRes.data.timezone_id || '');
     } catch (err) {
       console.error('Timezone error', err);
-      // Fallback is already handled by backend or kept at default
     } finally {
       setFetchingTimezone(false);
     }
@@ -125,7 +128,19 @@ export default function OnboardingPage() {
         longitude: parseFloat(longitude),
         timezone,
       });
-      // Update user in store and refresh all astro data with new birth details
+      const profileRes = await apiClient.post('/api/user/profiles', {
+        name: 'Me',
+        relation: 'self',
+        birthDate,
+        birthTime,
+        location,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        timezone,
+      });
+      const { fetchProfiles, setActiveProfile } = useAstroStore.getState();
+      await fetchProfiles();
+      setActiveProfile(profileRes.data.id);
       await useAstroStore.getState().updateUserAndRefresh({
         birthDate,
         birthTime,
@@ -148,7 +163,7 @@ export default function OnboardingPage() {
   return (
     <Page>
       <Navbar title='Birth Details' />
-      <Block strong>
+      <div className="p-4">
         {error && (
           <div className='bg-red-100 text-red-600 p-3 mb-4 rounded-lg text-sm'>
             {error}
@@ -157,37 +172,45 @@ export default function OnboardingPage() {
         <p>Please enter your birth details to generate your charts.</p>
         <div className='mb-4'>
           <Button
-            small
-            outline
+            size='sm'
+            variant='outline'
             onClick={handleUseCurrentLocation}
             disabled={detecting}
           >
             {detecting ? 'Detecting...' : 'Use Current Location'}
           </Button>
         </div>
-        <List strongIos insetIos>
-          <ListInput
-            label='Birth Date'
-            type='date'
-            placeholder='Select date'
-            value={birthDate}
-            onInput={(e) => setBirthDate(e.target.value)}
-          />
-          <ListInput
-            label='Birth Time'
-            type='time'
-            placeholder='Select time'
-            value={birthTime}
-            onInput={(e) => setBirthTime(e.target.value)}
-          />
-          <ListInput
-            label='Location'
-            type='text'
-            placeholder='Search for your birthplace (e.g. Kathmandu)'
-            value={location}
-            onInput={(e) => handleLocationInput(e.target.value)}
-            info={searching ? 'Searching...' : ''}
-          />
+        <div className="space-y-4">
+          <div>
+            <Input
+              label='Birth Date'
+              type='date'
+              placeholder='Select date'
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <Input
+              label='Birth Time'
+              type='time'
+              placeholder='Select time'
+              value={birthTime}
+              onChange={(e) => setBirthTime(e.target.value)}
+            />
+          </div>
+          <div>
+            <Input
+              label='Location'
+              type='text'
+              placeholder='Search for your birthplace (e.g. Kathmandu)'
+              value={location}
+              onChange={(e) => handleLocationInput(e.target.value)}
+            />
+            {searching && (
+              <p className="text-xs text-gray-500 mt-1">Searching...</p>
+            )}
+          </div>
           {searchResults.length > 0 && (
             <div className='bg-white border-x border-b max-h-40 overflow-y-auto mx-4 rounded-b-lg shadow-sm'>
               {searchResults.map((res, i) => (
@@ -201,36 +224,46 @@ export default function OnboardingPage() {
               ))}
             </div>
           )}
-          <ListInput
-            label='Latitude'
-            type='number'
-            placeholder='e.g. 27.7172'
-            value={latitude}
-            onInput={(e) => setLatitude(e.target.value)}
-          />
-          <ListInput
-            label='Longitude'
-            type='number'
-            placeholder='e.g. 85.3240'
-            value={longitude}
-            onInput={(e) => setLongitude(e.target.value)}
-          />
-          <ListInput
-            label='Timezone (Auto-detected from the location search)'
-            type='number'
-            placeholder='e.g. 5.5'
-            value={timezone}
-            disabled={true}
-            onInput={(e) => setTimezone(e.target.value)}
-            info={fetchingTimezone ? 'Fetching timezone...' : (timezoneName ? `Zone: ${timezoneName}` : '')}
-          />
-        </List>
-        <Block>
-          <Button large onClick={handleSave} disabled={fetchingTimezone || loading}>
+          <div>
+            <Input
+              label='Latitude'
+              type='number'
+              placeholder='e.g. 27.7172'
+              value={latitude}
+              onChange={(e) => setLatitude(e.target.value)}
+            />
+          </div>
+          <div>
+            <Input
+              label='Longitude'
+              type='number'
+              placeholder='e.g. 85.3240'
+              value={longitude}
+              onChange={(e) => setLongitude(e.target.value)}
+            />
+          </div>
+          <div>
+            <Input
+              label='Timezone (Auto-detected from the location search)'
+              type='number'
+              placeholder='e.g. 5.5'
+              value={timezone}
+              disabled={true}
+              onChange={(e) => setTimezone(e.target.value)}
+            />
+            {fetchingTimezone ? (
+              <p className="text-xs text-gray-500 mt-1">Fetching timezone...</p>
+            ) : timezoneName ? (
+              <p className="text-xs text-gray-500 mt-1">Zone: {timezoneName}</p>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-4">
+          <Button size='lg' onClick={handleSave} disabled={fetchingTimezone || loading}>
             {loading ? 'Saving...' : 'Save and View Charts'}
           </Button>
-        </Block>
-      </Block>
+        </div>
+      </div>
     </Page>
   );
 }
