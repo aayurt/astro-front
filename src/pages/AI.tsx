@@ -1,5 +1,6 @@
 import {
   Bot,
+  BookOpen,
   MenuIcon,
   MessageSquare,
   Mic,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { AvatarDisplay } from '../components/AvatarPicker';
 import { LoadingPlanet } from '../components/LoadingPlanet';
 import { Page } from '../components/ui/page';
 import { Navbar } from '../components/ui/navbar';
@@ -20,7 +22,7 @@ import { Badge } from '../components/modern-ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '../components/modern-ui/sheet';
 import { Tooltip } from '../components/modern-ui/tooltip';
 import apiClient from '../lib/api-client';
-import { ChatMessage, useChatStore } from '../store/chatStore';
+import { ChatMessage, KnowledgeSource, useChatStore } from '../store/chatStore';
 import { useAstroStore } from '../store/astroStore';
 
 const formatMessageTime = (timeStr: string): string => {
@@ -146,8 +148,11 @@ export default function AIPage() {
     loadingHistory,
     loadingByConversation,
     hydrated,
+    knowledgeSources,
+    conversationMeta,
     fetchConversations,
     fetchMessages,
+    fetchKnowledgeSources,
     setMessages,
     setActiveConversationId,
     setLoading,
@@ -155,10 +160,11 @@ export default function AIPage() {
     addMessageToConversation,
   } = useChatStore();
 
-  const { coins, fetchCoinStatus } = useAstroStore();
+  const { coins, fetchCoinStatus, profiles, activeProfileId, user: storeUser } = useAstroStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadingMessages = [
@@ -235,8 +241,19 @@ export default function AIPage() {
     if (hydrated) {
       fetchCoinStatus();
       fetchConversations(); // Use cache on mount
+      fetchKnowledgeSources();
     }
   }, [hydrated]);
+
+  const convMeta = id ? conversationMeta[id] : undefined;
+  const chartOwner = id
+    ? profiles.find((p) => p.id === convMeta?.profileId) ??
+      (convMeta?.profileId ? undefined : storeUser)
+    : profiles.find((p) => p.id === activeProfileId) ?? storeUser;
+  const activeKnowledgeKey = id ? convMeta?.knowledgeSource ?? null : selectedSource;
+  const activeKnowledgeLabel = knowledgeSources.find((s) => s.key === activeKnowledgeKey)?.label ?? null;
+  const ownerAvatar = chartOwner && 'avatar' in chartOwner ? chartOwner.avatar : undefined;
+  const ownerColor = chartOwner && 'color' in chartOwner ? chartOwner.color : undefined;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -244,6 +261,7 @@ export default function AIPage() {
 
   const startNewChat = () => {
     setActiveConversationId(null);
+    setSelectedSource(null);
     navigate('/ai');
     setMessageText('');
   };
@@ -274,9 +292,20 @@ export default function AIPage() {
 
     try {
       const store = useAstroStore.getState();
+      const isNewChat = !activeConversationId;
+      // Existing conversations answer against their locked chart; new ones use
+      // the currently-active profile and the selected knowledge base.
+      const chatProfileId = isNewChat
+        ? store.activeProfileId
+        : (convMeta?.profileId ?? store.activeProfileId);
       const res = await apiClient.post(
         '/api/ai/chat6',
-        { message: text, conversationId: activeConversationId, profileId: store.activeProfileId },
+        {
+          message: text,
+          conversationId: activeConversationId,
+          profileId: chatProfileId,
+          knowledgeSource: isNewChat ? selectedSource : undefined,
+        },
         { timeout: 180000 }, // Wait for 180 seconds
       );
 
@@ -448,9 +477,31 @@ export default function AIPage() {
 
         {/* Chat Area */}
         <div className='flex-1 flex flex-col min-w-0 bg-white'>
+          {chartOwner && (
+            <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50/50 shrink-0">
+              <div className="flex items-center gap-1.5 bg-white rounded-full px-2.5 py-1 text-xs ring-1 ring-gray-200">
+                <AvatarDisplay id={ownerAvatar} color={ownerColor} size="sm" />
+                <span className="font-medium text-gray-700 truncate max-w-[120px]">
+                  {chartOwner.name || 'Me'}
+                </span>
+                <span className="text-[10px] text-gray-400 capitalize whitespace-nowrap">
+                  {id ? 'chart' : 'active chart'}
+                </span>
+              </div>
+              <div
+                className="flex items-center gap-1.5 bg-white rounded-full px-2.5 py-1 text-xs ring-1 ring-gray-200 text-gray-600"
+                title={id ? 'Reference text is locked for this conversation' : 'Reference text for this conversation'}
+              >
+                <BookOpen size={12} className={activeKnowledgeLabel ? 'text-primary-500' : 'text-gray-400'} />
+                <span className="font-medium truncate max-w-[160px]">
+                  {activeKnowledgeLabel || 'None (chart only)'}
+                </span>
+              </div>
+            </div>
+          )}
           <div className='flex-1 overflow-y-auto p-4 space-y-4'>
             {messages.length === 0 && !loading && !id && (
-              <div className='flex flex-col items-center justify-center h-full text-center opacity-50 px-10'>
+              <div className='flex flex-col items-center justify-center h-full text-center px-10'>
                 <div className='w-20 h-20 bg-gradient-to-br from-primary-100 to-purple-100 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-primary-100/50'>
                   <Bot size={36} className='text-primary-600' />
                 </div>
@@ -460,6 +511,44 @@ export default function AIPage() {
                 <p className='text-base mt-3 text-gray-600'>
                   Ask me about your chart, dashas, or current transits.
                 </p>
+                <div className="mt-6 w-full max-w-sm bg-white rounded-2xl border border-gray-200 p-4 text-left shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      Reference text
+                    </span>
+                    <BookOpen size={14} className="text-gray-300" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSource(null)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium ring-1 transition-colors ${
+                        selectedSource === null
+                          ? 'bg-primary-600 text-white ring-primary-600'
+                          : 'bg-white text-gray-600 ring-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      None (chart only)
+                    </button>
+                    {knowledgeSources.map((s: KnowledgeSource) => (
+                      <button
+                        key={s.key}
+                        type="button"
+                        onClick={() => setSelectedSource(s.key)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium ring-1 transition-colors ${
+                          selectedSource === s.key
+                            ? 'bg-primary-600 text-white ring-primary-600'
+                            : 'bg-white text-gray-600 ring-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-3">
+                    The AI will answer from the selected text. Locked once you send your first message.
+                  </p>
+                </div>
                 <p className='text-[11px] mt-5 tracking-widest uppercase text-primary-400 font-medium'>
                   Each question uses 1 coin
                 </p>

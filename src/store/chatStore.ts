@@ -14,6 +14,13 @@ export interface Conversation {
   id: string;
   title: string;
   updatedAt: string;
+  profileId?: string | null;
+  knowledgeSource?: string | null;
+}
+
+export interface KnowledgeSource {
+  key: string;
+  label: string;
 }
 
 const CACHE_TTL_CONVERSATIONS = 60 * 1000;
@@ -30,6 +37,9 @@ interface ChatState {
   error: string | null;
   lastFetchedConversationsAt: number | null;
   lastFetchedMessagesAt: Record<string, number>;
+  knowledgeSources: KnowledgeSource[];
+  lastFetchedKnowledgeSourcesAt: number | null;
+  conversationMeta: Record<string, { profileId?: string | null; knowledgeSource?: string | null }>;
 
   setHydrated: (val: boolean) => void;
   setMessages: (messages: ChatMessage[]) => void;
@@ -38,6 +48,7 @@ interface ChatState {
   setConversationLoading: (id: string, loading: boolean) => void;
   fetchConversations: (force?: boolean) => Promise<void>;
   fetchMessages: (id: string, force?: boolean) => Promise<void>;
+  fetchKnowledgeSources: (force?: boolean) => Promise<void>;
   addMessage: (message: ChatMessage) => void;
   addMessageToConversation: (conversationId: string, message: ChatMessage) => void;
   clearChatData: () => void;
@@ -57,6 +68,9 @@ export const useChatStore = create<ChatState>()(
       error: null,
       lastFetchedConversationsAt: null,
       lastFetchedMessagesAt: {},
+      knowledgeSources: [],
+      lastFetchedKnowledgeSourcesAt: null,
+      conversationMeta: {},
 
       setHydrated: (val: boolean) => set({ hydrated: val }),
 
@@ -89,8 +103,27 @@ export const useChatStore = create<ChatState>()(
           error: null,
           lastFetchedConversationsAt: null,
           lastFetchedMessagesAt: {},
+          conversationMeta: {},
         });
         cacheDB.delete('chat-conversations');
+      },
+
+      fetchKnowledgeSources: async (force = false) => {
+        const now = Date.now();
+        if (
+          !force &&
+          get().knowledgeSources.length > 0 &&
+          get().lastFetchedKnowledgeSourcesAt &&
+          now - (get().lastFetchedKnowledgeSourcesAt || 0) < CACHE_TTL_CONVERSATIONS
+        ) {
+          return;
+        }
+        try {
+          const res = await apiClient.get('/api/ai/knowledge-sources');
+          set({ knowledgeSources: res.data, lastFetchedKnowledgeSourcesAt: now });
+        } catch (err) {
+          console.error('Error fetching knowledge sources:', err);
+        }
       },
 
       fetchConversations: async (force = false) => {
@@ -112,8 +145,14 @@ export const useChatStore = create<ChatState>()(
         try {
           console.log('Fetching conversations...');
           const res = await apiClient.get('/api/ai/conversations');
+          const conversations = res.data;
+          const meta: ChatState['conversationMeta'] = {};
+          for (const c of conversations) {
+            meta[c.id] = { profileId: c.profileId ?? null, knowledgeSource: c.knowledgeSource ?? null };
+          }
           set({
-            conversations: res.data,
+            conversations,
+            conversationMeta: meta,
             loadingHistory: false,
             lastFetchedConversationsAt: now,
           });
@@ -169,6 +208,10 @@ export const useChatStore = create<ChatState>()(
             loading: false,
             loadingByConversation: { ...state.loadingByConversation, [id]: false },
             lastFetchedMessagesAt: { ...state.lastFetchedMessagesAt, [id]: Date.now() },
+            conversationMeta: {
+              ...state.conversationMeta,
+              [id]: { profileId: res.data.profileId ?? null, knowledgeSource: res.data.knowledgeSource ?? null },
+            },
           }));
 
           cacheDB.set(`chat-messages-${id}`, chatMessages, CACHE_TTL_CONVERSATIONS);
