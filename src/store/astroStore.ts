@@ -82,6 +82,7 @@ interface AstroState {
   deleteProfile: (id: string) => Promise<void>;
   fetchCoinStatus: () => Promise<void>;
   claimDailyCoins: () => Promise<void>;
+  redeemCoupon: (code: string) => Promise<number>;
   fetchTransitData: (force?: boolean) => Promise<void>;
   fetchMyTransitData: (force?: boolean) => Promise<void>;
   fetchLagnaGochar: (force?: boolean) => Promise<void>;
@@ -313,6 +314,14 @@ export const useAstroStore = create<AstroState>()(
           console.error('Error claiming coins', err);
           set({ error: err.message || 'Failed to claim coins', loading: false });
         }
+      },
+
+      redeemCoupon: async (code: string) => {
+        const res = await apiClient.post('/api/user/redeem-coupon', { code });
+        const coins = res.data.coins;
+        await cacheDB.set('astro-coins', { coins, canClaim: get().canClaim }, CACHE_TTL.COINS);
+        set({ coins, lastCoinFetch: Date.now() });
+        return coins;
       },
 
       fetchAstroData: async (force = false, token?: string) => {

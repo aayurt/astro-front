@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import apiClient from '../lib/api-client';
 import { useAstroStore } from '../store/astroStore';
 import { useChatStore } from '../store/chatStore';
@@ -13,7 +14,7 @@ import { Dialog, DialogContent } from '../components/modern-ui/dialog';
 import { AvatarDisplay, AvatarPicker } from '../components/AvatarPicker';
 
 export default function ProfilePage() {
-  const { user: storeUser, hydrated, refreshData, fetchAllTransitData, profiles, activeProfileId, setActiveProfile, fetchProfiles, addProfile, updateProfile, deleteProfile } = useAstroStore();
+  const { user: storeUser, hydrated, refreshData, fetchAllTransitData, profiles, activeProfileId, setActiveProfile, fetchProfiles, addProfile, updateProfile, deleteProfile, coins, fetchCoinStatus, redeemCoupon } = useAstroStore();
   const { clearChatData } = useChatStore();
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('');
@@ -43,6 +44,8 @@ export default function ProfilePage() {
   const [pfSearching, setPfSearching] = useState(false);
   const [pfFetchingTz, setPfFetchingTz] = useState(false);
   const [pfError, setPfError] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -72,6 +75,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (hydrated) {
       fetchProfiles();
+      fetchCoinStatus();
     }
   }, [hydrated]);
 
@@ -170,6 +174,20 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await useAstroStore.getState().logout();
+  };
+
+  const handleRedeemCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setRedeeming(true);
+    try {
+      const newCoins = await redeemCoupon(couponCode.trim());
+      toast.success(`Coupon redeemed! You now have ${newCoins} coins.`);
+      setCouponCode('');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to redeem coupon');
+    } finally {
+      setRedeeming(false);
+    }
   };
 
   const openProfileDialog = (profile?: ProfileType) => {
@@ -397,6 +415,26 @@ export default function ProfilePage() {
         <Button size="lg" variant="outline" className="w-full" onClick={async () => { await refreshData(); await fetchAllTransitData(true); }}>
           Sync Now
         </Button>
+      </div>
+
+      <div className="px-4 mt-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-bold text-gray-800">Coins</span>
+            <span className="text-sm font-semibold text-primary-600">{coins} Coins</span>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="Enter coupon code"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value)}
+            />
+            <Button onClick={handleRedeemCoupon} disabled={redeeming || !couponCode.trim()}>
+              {redeeming ? 'Redeeming...' : 'Redeem'}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="border-t border-gray-100 my-6" />
