@@ -15,6 +15,7 @@ import { PlanetsBirthChartSummary } from '../components/PlanetsBirthChartSummary
 import { VimsottariDasha } from '../components/VimsottariDasha';
 import { YoginiDasha } from '../components/YoginiDasha';
 import { useAstroStore } from '../store/astroStore';
+import { SIGN_LORDS } from '../types/constants';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -158,7 +159,7 @@ export default function DashboardPage() {
                         {planets.Ascendant?.zodiac_sign_name || 'Sign'}
                       </span>{' '}
                       Ascendant, ruled by{' '}
-                      {planets.Ascendant?.zodiac_sign_lord || '-'} in{' '}
+                      {SIGN_LORDS[planets.Ascendant?.zodiac_sign_name || ''] || planets.Ascendant?.zodiac_sign_lord || '-'} in{' '}
                       {planets.Ascendant?.nakshatra_name || '-'} (Pada{' '}
                       {planets.Ascendant?.nakshatra_pada || '-'}).
                     </p>

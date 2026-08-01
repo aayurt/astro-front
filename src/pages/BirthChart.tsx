@@ -14,7 +14,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 import { ChartData, PanchangData, User } from '../types/api';
-import { ZODIAC_SIGNS } from '../types/constants';
+import { ZODIAC_SIGNS, SIGN_LORDS, NAKSHATRA_LORDS } from '../types/constants';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -121,7 +121,7 @@ export default function BirthChartPage() {
                                   zodiacSigns[planet.current_sign - 1]}
                               </td>
                               <td className='p-2 text-gray-600 italic'>
-                                {planet.zodiac_sign_lord || '-'}
+                                {SIGN_LORDS[planet.zodiac_sign_name ?? ''] || planet.zodiac_sign_lord || '-'}
                               </td>
                               <td className='p-2 text-gray-600'>
                                 {planet.nakshatra_name}
@@ -132,7 +132,7 @@ export default function BirthChartPage() {
                                 )}
                               </td>
                               <td className='p-2 text-gray-600'>
-                                {planet.nakshatra_vimsottari_lord || '-'}
+                                {NAKSHATRA_LORDS[planet.nakshatra_name ?? ''] || planet.nakshatra_vimsottari_lord || '-'}
                               </td>
                               <td className='p-2 text-gray-600 text-center font-bold'>
                                 {planet.house_number || '1'}

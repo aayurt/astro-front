@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import VedicChart from '../components/VedicChart';
 import { useAstroStore } from '../store/astroStore';
-import { ZODIAC_SIGNS } from '../types/constants';
+import { ZODIAC_SIGNS, SIGN_LORDS, NAKSHATRA_LORDS } from '../types/constants';
 import { LoadingPlanet } from '../components/LoadingPlanet';
 import apiClient from '../lib/api-client';
 import { Page } from '../components/ui/page';
@@ -66,14 +66,18 @@ function PlanetTable({ data }: { data: Record<string, any> }) {
                 <td className='p-2 text-gray-600'>
                   {planet.zodiac_sign_name || ZODIAC_SIGNS[(planet.transit_sign || planet.current_sign) - 1]}
                 </td>
-                <td className='p-2 text-gray-600 italic'>{planet.zodiac_sign_lord || '-'}</td>
+                <td className='p-2 text-gray-600 italic'>
+                  {SIGN_LORDS[planet.zodiac_sign_name] || planet.zodiac_sign_lord || '-'}
+                </td>
                 <td className='p-2 text-gray-600'>
                   {planet.nakshatra_name}
                   {planet.nakshatra_pada && (
                     <span className='ml-1 text-xs opacity-75'>(P{planet.nakshatra_pada})</span>
                   )}
                 </td>
-                <td className='p-2 text-gray-600'>{planet.nakshatra_vimsottari_lord || '-'}</td>
+                <td className='p-2 text-gray-600'>
+                  {NAKSHATRA_LORDS[planet.nakshatra_name] || planet.nakshatra_vimsottari_lord || '-'}
+                </td>
                 <td className='p-2 text-gray-600 text-center font-bold'>{planet.house_number || '1'}</td>
                 <td className='p-2 text-center'>
                   {planet.isRetro === 'true' ? (
