@@ -21,6 +21,7 @@ export interface Conversation {
 export interface KnowledgeSource {
   key: string;
   label: string;
+  chunkCount?: number;
 }
 
 const CACHE_TTL_CONVERSATIONS = 60 * 1000;
