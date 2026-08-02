@@ -417,6 +417,12 @@ export default function ProfilePage() {
         </Button>
       </div>
 
+      <div className="px-4 mt-2">
+        <Button size="lg" variant="destructive" className="w-full" onClick={handleLogout}>
+          Logout
+        </Button>
+      </div>
+
       <div className="px-4 mt-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
           <div className="flex items-center justify-between mb-2">
@@ -471,12 +477,6 @@ export default function ProfilePage() {
           ))}
         </div>
       )}
-
-      <div className="px-4 mt-10">
-        <Button size="lg" variant="outline" className="w-full" onClick={handleLogout}>
-          Logout
-        </Button>
-      </div>
 
       {error && (
         <div className="px-4 text-center text-red-500 text-sm mt-4">

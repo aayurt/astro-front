@@ -135,6 +135,11 @@ const formatMessageText = (text: string) => {
   return <>{parts}</>;
 };
 
+const IS_MOBILE =
+  typeof navigator !== 'undefined' &&
+  (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    navigator.maxTouchPoints > 0);
+
 export default function AIPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -395,9 +400,6 @@ export default function AIPage() {
                 className='text-gray-400 active:text-primary-600 transition-colors'
               />
             </Button>
-            <span className='inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-yellow-600/20 whitespace-nowrap'>
-              🪙 {coins} Coins
-            </span>
           </div>
         }
       />
@@ -611,9 +613,16 @@ export default function AIPage() {
                   e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
+                  if (e.key === 'Enter') {
+                    if (IS_MOBILE) {
+                      // On mobile there is no Shift key; let Enter insert a new line.
+                      // Send via the send button instead.
+                      return;
+                    }
+                    if (!e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
                   }
                 }}
                 placeholder={coins > 0 ? 'Ask about your chart...' : 'Insufficient coins'}

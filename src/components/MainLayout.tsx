@@ -1,12 +1,19 @@
 import { Download, X } from 'lucide-react';
+import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import BottomNav from './BottomNav';
 import { PageTransition } from './PageTransition';
 import { ProfileSwitcher } from './ProfileSwitcher';
+import { useAstroStore } from '../store/astroStore';
 
 const MainLayout = () => {
   const { isInstallable, installPWA, dismissPWA } = usePWAInstall();
+  const { coins, fetchCoinStatus } = useAstroStore();
+
+  useEffect(() => {
+    fetchCoinStatus();
+  }, [fetchCoinStatus]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-white">
@@ -42,7 +49,12 @@ const MainLayout = () => {
         <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-100">
           <div className="flex items-center justify-between px-4 py-2">
             <div className="text-sm font-bold text-gray-800">Astro Guru</div>
-            <ProfileSwitcher />
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-yellow-600/20 whitespace-nowrap">
+                🪙 {coins} Coins
+              </span>
+              <ProfileSwitcher />
+            </div>
           </div>
         </div>
         <PageTransition>
