@@ -8,6 +8,7 @@ export interface ChatMessage {
   type: 'sent' | 'received';
   name: string;
   time?: string;
+  duration?: number;
 }
 
 export interface Conversation {

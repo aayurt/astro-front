@@ -170,6 +170,7 @@ export default function AIPage() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
+  const [waitTime, setWaitTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadingMessages = [
@@ -250,6 +251,13 @@ export default function AIPage() {
     }
   }, [hydrated]);
 
+  useEffect(() => {
+    if (!loading) return;
+    setWaitTime(0);
+    const id = setInterval(() => setWaitTime((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [loading]);
+
   const convMeta = id ? conversationMeta[id] : undefined;
   const chartOwner = id
     ? profiles.find((p) => p.id === convMeta?.profileId) ??
@@ -296,6 +304,7 @@ export default function AIPage() {
     }
 
     try {
+      const start = Date.now();
       const store = useAstroStore.getState();
       const isNewChat = !activeConversationId;
       // Existing conversations answer against their locked chart; new ones use
@@ -322,6 +331,7 @@ export default function AIPage() {
           hour: '2-digit',
           minute: '2-digit',
         }),
+        duration: Math.round((Date.now() - start) / 1000),
       };
 
       addMessage(aiMessage);
@@ -569,6 +579,7 @@ export default function AIPage() {
                   <div className={`flex items-center ${msg.type === 'received' ? 'justify-between' : 'justify-end'} gap-2 mt-1`}>
                     <span className={`text-[10px] ${msg.type === 'sent' ? 'text-primary-200' : 'text-gray-400'}`}>
                       {msg.time ? formatMessageTime(msg.time) : "NaN"}
+                      {msg.duration ? ` · ⏱ ${msg.duration}s` : ''}
                     </span>
                     {msg.type === 'received' && (
                       <button
@@ -596,6 +607,9 @@ export default function AIPage() {
                     </div>
                     <p className="text-xs text-gray-500 text-center max-w-[200px] animate-pulse">
                       {loadingMessages[loadingStep]}
+                    </p>
+                    <p className="text-[10px] font-medium text-gray-400 tabular-nums">
+                      ⏱ Waiting {waitTime}s
                     </p>
                   </div>
                 </div>
